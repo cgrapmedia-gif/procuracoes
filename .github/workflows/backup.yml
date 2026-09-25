@@ -1,0 +1,31 @@
+name: Cópia de segurança semanal
+on:
+  schedule:
+    - cron: "30 2 * * 0"   # domingo 02:30 UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEON_BACKUP_URL: ${{ secrets.NEON_BACKUP_URL }}
+      BACKUP_PASS: ${{ secrets.BACKUP_PASS }}
+      RCLONE_CONFIG_R2_TYPE: s3
+      RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+      RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_BACKUP_ACCESS_KEY }}
+      RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_BACKUP_SECRET_KEY }}
+      RCLONE_CONFIG_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
+    steps:
+      - name: Instalar rclone
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq rclone
+      - name: Exportar (pg_dump 17), cifrar e enviar para o R2
+        run: |
+          set -euo pipefail
+          F="procuracoes-$(date +%F).dump.enc"
+          docker run --rm postgres:17 pg_dump "$NEON_BACKUP_URL" --format=custom --no-owner --no-privileges \
+            | openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:BACKUP_PASS -out "$F"
+          test "$(stat -c %s "$F")" -gt 10000
+          rclone copy "$F" r2:procuracoes-backups/base-de-dados/
+          echo "Cópia enviada: $F ($(du -h "$F" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"

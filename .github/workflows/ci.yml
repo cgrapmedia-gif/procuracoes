@@ -1,0 +1,42 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: proc
+          POSTGRES_PASSWORD: proc
+          POSTGRES_DB: procuracoes
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U proc"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://proc:proc@localhost:5432/procuracoes
+      CHROMIUM_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Segredos efémeros só para os testes
+        run: |
+          echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
+          echo "DATA_ENC_KEY=$(openssl rand -base64 32 | tr -d '\n')" >> "$GITHUB_ENV"
+          echo "DATA_BIDX_KEY=$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
+      - name: Motor de domínio
+        run: npm run build -w @proc/core && npm test -w @proc/core
+      - name: API (testes end-to-end contra PostgreSQL)
+        run: npm test -w @proc/api
+      - name: Compilar API e frontend
+        run: npm run build -w @proc/api && npm run build -w @proc/web

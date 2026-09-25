@@ -1,0 +1,15 @@
+# Produção/homologação com base de dados Neon (sem PostgreSQL local).
+# Uso: preencher apps/api/.env (Neon + S3) e `docker compose -f docker-compose.neon.yml up -d --build`
+services:
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    env_file: apps/api/.env
+    environment: { NODE_ENV: production }   # o resto vem de apps/api/.env
+    command: sh -c "node dist/db/migrate.js && node dist/main.js"
+    restart: unless-stopped
+    ports: ["127.0.0.1:3001:3001"]
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile, args: { API_URL: "http://api:3001" } }
+    depends_on: [api]
+    restart: unless-stopped
+    ports: ["127.0.0.1:3000:3000"]

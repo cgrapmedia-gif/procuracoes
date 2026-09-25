@@ -1,0 +1,1441 @@
+[
+  {
+    "codigo": "BANC-001",
+    "categoria": "BANCARIOS",
+    "tipo": "PODER",
+    "nome": "Representação junto de instituição bancária",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Representação genérica perante um banco identificado.",
+    "texto": "representar {{flex outorgantes \"o outorgante\" \"a outorgante\" \"os outorgantes\" \"as outorgantes\"}} junto do {{banco}}{{#if agencia}}, agência {{agencia}}{{/if}}, em todos os assuntos relacionados com as contas de que {{flex outorgantes \"seja titular\" \"seja titular\" \"sejam titulares\" \"sejam titulares\"}}",
+    "campos": [
+      {
+        "chave": "banco",
+        "rotulo": "Banco",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      },
+      {
+        "chave": "agencia",
+        "rotulo": "Agência",
+        "tipo": "TEXTO",
+        "obrigatorio": false
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "BANC-002"
+      },
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "BANC-003"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "BANC-002",
+    "categoria": "BANCARIOS",
+    "tipo": "PODER",
+    "nome": "Movimentação de conta bancária",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Operações sobre uma conta concreta, com limite opcional.",
+    "texto": "relativamente à conta {{#if iban}}com o IBAN {{iban}}{{else}}n.º {{numero_conta}}{{/if}}, {{operacoes}}{{#if limite}}, até ao limite de {{limite}} por operação{{/if}}",
+    "campos": [
+      {
+        "chave": "iban",
+        "rotulo": "IBAN",
+        "tipo": "IBAN",
+        "obrigatorio": false
+      },
+      {
+        "chave": "numero_conta",
+        "rotulo": "N.º de conta (se não houver IBAN)",
+        "tipo": "TEXTO",
+        "obrigatorio": false
+      },
+      {
+        "chave": "operacoes",
+        "rotulo": "Operações autorizadas",
+        "tipo": "SELECCAO_MULTIPLA",
+        "obrigatorio": true,
+        "opcoes": [
+          {
+            "valor": "mov",
+            "rotulo": "movimentar e actualizar a conta"
+          },
+          {
+            "valor": "ext",
+            "rotulo": "solicitar extractos bancários"
+          },
+          {
+            "valor": "tnac",
+            "rotulo": "efectuar transferências nacionais"
+          },
+          {
+            "valor": "tint",
+            "rotulo": "efectuar transferências internacionais"
+          },
+          {
+            "valor": "dep",
+            "rotulo": "fazer depósitos"
+          },
+          {
+            "valor": "lev",
+            "rotulo": "fazer levantamentos"
+          },
+          {
+            "valor": "chq",
+            "rotulo": "requisitar, levantar e assinar cheques"
+          },
+          {
+            "valor": "cart",
+            "rotulo": "solicitar a emissão e o levantamento de cartões de débito e crédito e respectivos códigos"
+          },
+          {
+            "valor": "net",
+            "rotulo": "solicitar credenciais de banca electrónica"
+          }
+        ]
+      },
+      {
+        "chave": "limite",
+        "rotulo": "Limite por operação",
+        "tipo": "MOEDA",
+        "obrigatorio": false,
+        "moeda": "AOA"
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "REQUER",
+        "alvoCodigo": "BANC-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "BANC-003",
+    "categoria": "BANCARIOS",
+    "tipo": "PODER",
+    "nome": "Actualização de dados e assinaturas",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Actualização cadastral e de fichas de assinatura.",
+    "texto": "actualizar os dados cadastrais e as fichas de assinatura, assinando todos os formulários necessários",
+    "campos": [],
+    "regras": [
+      {
+        "tipo": "REQUER",
+        "alvoCodigo": "BANC-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "BANC-004",
+    "categoria": "BANCARIOS",
+    "tipo": "PODER",
+    "nome": "Abertura de conta bancária",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Abrir conta em nome do outorgante.",
+    "texto": "abrir conta de depósitos à ordem em nome {{flex outorgantes \"do outorgante\" \"da outorgante\" \"dos outorgantes\" \"das outorgantes\"}} no {{banco}}, subscrevendo os respectivos contratos",
+    "campos": [
+      {
+        "chave": "banco",
+        "rotulo": "Banco",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "BANC-005",
+    "categoria": "BANCARIOS",
+    "tipo": "PODER",
+    "nome": "Encerramento de conta bancária",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Encerrar conta e receber saldo.",
+    "texto": "encerrar a conta n.º {{numero_conta}} junto do {{banco}} e receber o respectivo saldo",
+    "campos": [
+      {
+        "chave": "banco",
+        "rotulo": "Banco",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      },
+      {
+        "chave": "numero_conta",
+        "rotulo": "N.º de conta",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "INCOMPATIVEL",
+        "alvoCodigo": "BANC-004"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "BANC-006",
+    "categoria": "BANCARIOS",
+    "tipo": "PODER",
+    "nome": "Contratação de crédito",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Negociar e contratar crédito até montante.",
+    "texto": "negociar e contratar crédito junto do {{banco}} até ao montante de {{montante}}, prestando as garantias que se mostrem necessárias",
+    "campos": [
+      {
+        "chave": "banco",
+        "rotulo": "Banco",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      },
+      {
+        "chave": "montante",
+        "rotulo": "Montante máximo",
+        "tipo": "MOEDA",
+        "obrigatorio": true,
+        "moeda": "AOA"
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "BANC-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "BANC-007",
+    "categoria": "BANCARIOS",
+    "tipo": "PODER",
+    "nome": "Levantamento de cartão e códigos",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Levantar cartões e PIN.",
+    "texto": "solicitar e levantar cartões de débito e de crédito e os respectivos códigos secretos, bem como efectuar os seus carregamentos",
+    "campos": [],
+    "regras": [
+      {
+        "tipo": "REQUER",
+        "alvoCodigo": "BANC-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "IMOV-001",
+    "categoria": "IMOBILIARIOS",
+    "tipo": "PODER",
+    "nome": "Venda de imóvel",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Vender imóvel identificado, com preço mínimo.",
+    "texto": "vender, pelo preço e condições que entender, mas nunca inferior a {{preco_minimo}}, o {{imovel}}, outorgando e assinando a respectiva escritura ou documento particular autenticado",
+    "campos": [
+      {
+        "chave": "imovel",
+        "rotulo": "Imóvel",
+        "tipo": "IMOVEL",
+        "obrigatorio": true
+      },
+      {
+        "chave": "preco_minimo",
+        "rotulo": "Preço mínimo",
+        "tipo": "MOEDA",
+        "obrigatorio": true,
+        "moeda": "EUR"
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "REG-002"
+      },
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "FISC-001"
+      },
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "IMOV-004"
+      },
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "IMOV-005"
+      },
+      {
+        "tipo": "INCOMPATIVEL",
+        "alvoCodigo": "IMOV-002"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [
+      "IMOVEL_VENDA",
+      "ESPECIAL",
+      "GERAL"
+    ],
+    "publicar": false
+  },
+  {
+    "codigo": "IMOV-002",
+    "categoria": "IMOBILIARIOS",
+    "tipo": "PODER",
+    "nome": "Compra de imóvel",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Comprar imóvel identificado, com preço máximo.",
+    "texto": "comprar, pelo preço máximo de {{preco_maximo}}, o {{imovel}}, podendo outorgar a respectiva escritura e pagar o preço",
+    "campos": [
+      {
+        "chave": "imovel",
+        "rotulo": "Imóvel",
+        "tipo": "IMOVEL",
+        "obrigatorio": true
+      },
+      {
+        "chave": "preco_maximo",
+        "rotulo": "Preço máximo",
+        "tipo": "MOEDA",
+        "obrigatorio": true,
+        "moeda": "EUR"
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "REG-002"
+      },
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "FISC-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [
+      "IMOVEL_COMPRA",
+      "ESPECIAL",
+      "GERAL"
+    ],
+    "publicar": false
+  },
+  {
+    "codigo": "IMOV-003",
+    "categoria": "IMOBILIARIOS",
+    "tipo": "PODER",
+    "nome": "Contrato-promessa",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Celebrar contrato-promessa de compra e venda.",
+    "texto": "celebrar contrato-promessa de compra e venda relativo ao {{imovel}}, recebendo ou entregando sinal",
+    "campos": [
+      {
+        "chave": "imovel",
+        "rotulo": "Imóvel",
+        "tipo": "IMOVEL",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "IMOV-004",
+    "categoria": "COMPRA_VENDA",
+    "tipo": "PODER",
+    "nome": "Receber o preço e dar quitação",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Receber valores e emitir quitação.",
+    "texto": "receber o preço ou quaisquer quantias devidas e dar a respectiva quitação",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "IMOV-005",
+    "categoria": "IMOBILIARIOS",
+    "tipo": "PODER",
+    "nome": "Tratar documentação do imóvel",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Certidões, cadernetas, licenças.",
+    "texto": "requerer e levantar certidões, cadernetas prediais, licenças e demais documentos relativos ao imóvel",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "IMOV-006",
+    "categoria": "IMOBILIARIOS",
+    "tipo": "PODER",
+    "nome": "Hipoteca",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Constituir ou cancelar hipoteca.",
+    "texto": "{{accao}} hipoteca sobre o {{imovel}}",
+    "campos": [
+      {
+        "chave": "accao",
+        "rotulo": "Acção",
+        "tipo": "RADIO",
+        "obrigatorio": true,
+        "opcoes": [
+          {
+            "valor": "constituir",
+            "rotulo": "constituir"
+          },
+          {
+            "valor": "cancelar",
+            "rotulo": "requerer o cancelamento de"
+          }
+        ]
+      },
+      {
+        "chave": "imovel",
+        "rotulo": "Imóvel",
+        "tipo": "IMOVEL",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "ARR-001",
+    "categoria": "ARRENDAMENTO",
+    "tipo": "PODER",
+    "nome": "Dar de arrendamento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Arrendar imóvel do outorgante.",
+    "texto": "dar de arrendamento o {{imovel}}, pela renda mensal mínima de {{renda}}, assinar o contrato e receber as rendas",
+    "campos": [
+      {
+        "chave": "imovel",
+        "rotulo": "Imóvel",
+        "tipo": "IMOVEL",
+        "obrigatorio": true
+      },
+      {
+        "chave": "renda",
+        "rotulo": "Renda mínima",
+        "tipo": "MOEDA",
+        "obrigatorio": true,
+        "moeda": "EUR"
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "ARR-002",
+    "categoria": "ARRENDAMENTO",
+    "tipo": "PODER",
+    "nome": "Tomar de arrendamento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Arrendar imóvel para o outorgante.",
+    "texto": "tomar de arrendamento, para habitação {{flex outorgantes \"do outorgante\" \"da outorgante\" \"dos outorgantes\" \"das outorgantes\"}}, imóvel situado em {{localidade}}, assinando o respectivo contrato",
+    "campos": [
+      {
+        "chave": "localidade",
+        "rotulo": "Localidade",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "ARR-003",
+    "categoria": "ARRENDAMENTO",
+    "tipo": "PODER",
+    "nome": "Denúncia de arrendamento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Denunciar ou revogar contrato de arrendamento.",
+    "texto": "denunciar, revogar ou resolver o contrato de arrendamento relativo ao {{imovel}}",
+    "campos": [
+      {
+        "chave": "imovel",
+        "rotulo": "Imóvel",
+        "tipo": "IMOVEL",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "REG-001",
+    "categoria": "REGISTOS",
+    "tipo": "PODER",
+    "nome": "Registo civil — certidões e assentos",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Requerer certidões, averbamentos e rectificações.",
+    "texto": "requerer junto da {{conservatoria}} certidões de {{actos}}, bem como averbamentos, rectificações e segundas vias",
+    "campos": [
+      {
+        "chave": "conservatoria",
+        "rotulo": "Conservatória",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      },
+      {
+        "chave": "actos",
+        "rotulo": "Actos",
+        "tipo": "SELECCAO_MULTIPLA",
+        "obrigatorio": true,
+        "opcoes": [
+          {
+            "valor": "nasc",
+            "rotulo": "nascimento"
+          },
+          {
+            "valor": "cas",
+            "rotulo": "casamento"
+          },
+          {
+            "valor": "obito",
+            "rotulo": "óbito"
+          }
+        ]
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "REG-002",
+    "categoria": "REGISTOS",
+    "tipo": "PODER",
+    "nome": "Registo predial",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Actos de registo predial.",
+    "texto": "requerer, junto de qualquer conservatória do registo predial, todos os actos de registo, provisórios ou definitivos, e respectivos cancelamentos",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "REG-003",
+    "categoria": "REGISTOS",
+    "tipo": "PODER",
+    "nome": "Registo comercial",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Actos de registo comercial.",
+    "texto": "requerer, junto da conservatória do registo comercial, quaisquer actos de registo relativos à {{empresa}}",
+    "campos": [
+      {
+        "chave": "empresa",
+        "rotulo": "Sociedade",
+        "tipo": "EMPRESA",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "REG-004",
+    "categoria": "REGISTOS",
+    "tipo": "PODER",
+    "nome": "Rectificação de assento de nascimento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Correcção de assento.",
+    "texto": "requerer a rectificação do assento de nascimento {{flex outorgantes \"do outorgante\" \"da outorgante\" \"dos outorgantes\" \"das outorgantes\"}}, relativamente a {{elemento}}",
+    "campos": [
+      {
+        "chave": "elemento",
+        "rotulo": "Elemento a rectificar",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "REG-005",
+    "categoria": "REGISTOS",
+    "tipo": "PODER",
+    "nome": "Instrução de processo de casamento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Organizar processo preliminar de casamento.",
+    "texto": "instruir o processo preliminar de casamento junto da {{conservatoria}}, apresentando e levantando documentos",
+    "campos": [
+      {
+        "chave": "conservatoria",
+        "rotulo": "Conservatória",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "REG-006",
+    "categoria": "REGISTOS",
+    "tipo": "PODER",
+    "nome": "Bilhete de Identidade — tratamento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Pedido ou renovação de BI.",
+    "texto": "tratar de todos os assuntos relativos à emissão ou renovação do Bilhete de Identidade {{flex outorgantes \"do outorgante\" \"da outorgante\" \"dos outorgantes\" \"das outorgantes\"}}",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "REG-007",
+    "categoria": "REGISTOS",
+    "tipo": "PODER",
+    "nome": "Passaporte — tratamento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Tratamento de passaporte (observado em 7% do corpus).",
+    "texto": "tratar e levantar o passaporte {{flex outorgantes \"do outorgante\" \"da outorgante\" \"dos outorgantes\" \"das outorgantes\"}} junto dos serviços competentes",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "JUD-001",
+    "categoria": "JUDICIAIS",
+    "tipo": "PODER",
+    "nome": "Mandato forense geral",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Poderes forenses gerais (advogado).",
+    "texto": "representar {{flex outorgantes \"o outorgante\" \"a outorgante\" \"os outorgantes\" \"as outorgantes\"}} em juízo e fora dele, com os poderes forenses gerais, intentando acções, contestando, recorrendo e acompanhando processos",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "JUD-002",
+    "categoria": "JUDICIAIS",
+    "tipo": "PODER",
+    "nome": "Poderes forenses especiais",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Confessar, desistir, transigir.",
+    "texto": "confessar, desistir do pedido ou da instância e transigir, nos termos legalmente permitidos",
+    "campos": [],
+    "regras": [
+      {
+        "tipo": "REQUER",
+        "alvoCodigo": "JUD-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "JUD-003",
+    "categoria": "JUDICIAIS",
+    "tipo": "PODER",
+    "nome": "Processo determinado",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Intervir em processo identificado.",
+    "texto": "intervir no processo n.º {{processo}}, a correr termos no {{tribunal}}",
+    "campos": [
+      {
+        "chave": "processo",
+        "rotulo": "N.º do processo",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      },
+      {
+        "chave": "tribunal",
+        "rotulo": "Tribunal",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "JUD-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "JUD-004",
+    "categoria": "JUDICIAIS",
+    "tipo": "PODER",
+    "nome": "Receber citações e notificações",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Receber actos de comunicação.",
+    "texto": "receber citações, notificações e intimações",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "JUD-005",
+    "categoria": "JUDICIAIS",
+    "tipo": "PODER",
+    "nome": "Constituir mandatário",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Constituir advogado.",
+    "texto": "constituir advogado, conferindo-lhe os poderes forenses legalmente admissíveis",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "JUD-006",
+    "categoria": "JUDICIAIS",
+    "tipo": "PODER",
+    "nome": "Queixa e participação",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Apresentar queixa criminal.",
+    "texto": "apresentar queixa ou participação junto das autoridades competentes e prestar declarações",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "HER-001",
+    "categoria": "HERANCAS",
+    "tipo": "PODER",
+    "nome": "Habilitação de herdeiros",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Habilitação por óbito de pessoa identificada.",
+    "texto": "requerer e outorgar a habilitação de herdeiros por óbito de {{falecido}}, falecido em {{data_obito}}",
+    "campos": [
+      {
+        "chave": "falecido",
+        "rotulo": "Nome do falecido",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      },
+      {
+        "chave": "data_obito",
+        "rotulo": "Data do óbito",
+        "tipo": "DATA",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "HER-002"
+      },
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "REG-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "HER-002",
+    "categoria": "HERANCAS",
+    "tipo": "PODER",
+    "nome": "Partilha",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Partilha de bens da herança.",
+    "texto": "proceder à partilha dos bens da herança, aceitando ou repudiando tornas e assinando os respectivos documentos",
+    "campos": [],
+    "regras": [
+      {
+        "tipo": "REQUER",
+        "alvoCodigo": "HER-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "HER-003",
+    "categoria": "HERANCAS",
+    "tipo": "PODER",
+    "nome": "Repúdio de herança",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Repudiar herança.",
+    "texto": "repudiar a herança aberta por óbito de {{falecido}}",
+    "campos": [
+      {
+        "chave": "falecido",
+        "rotulo": "Nome do falecido",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "INCOMPATIVEL",
+        "alvoCodigo": "HER-002"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "FISC-001",
+    "categoria": "FISCAIS",
+    "tipo": "PODER",
+    "nome": "Representação perante a administração tributária",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Declarações, pagamentos, certidões.",
+    "texto": "representar {{flex outorgantes \"o outorgante\" \"a outorgante\" \"os outorgantes\" \"as outorgantes\"}} perante a {{administracao}}, apresentando declarações, efectuando pagamentos e requerendo certidões",
+    "campos": [
+      {
+        "chave": "administracao",
+        "rotulo": "Administração tributária",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "FISC-002",
+    "categoria": "FISCAIS",
+    "tipo": "PODER",
+    "nome": "Pedido de NIF",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Requerer número de identificação fiscal.",
+    "texto": "requerer a atribuição de número de identificação fiscal",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "FISC-003",
+    "categoria": "FISCAIS",
+    "tipo": "PODER",
+    "nome": "Reclamações e impugnações fiscais",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Reclamar actos tributários.",
+    "texto": "apresentar reclamações graciosas, recursos hierárquicos e impugnações",
+    "campos": [],
+    "regras": [
+      {
+        "tipo": "REQUER",
+        "alvoCodigo": "FISC-001"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "ADU-001",
+    "categoria": "ADUANEIROS",
+    "tipo": "PODER",
+    "nome": "Desalfandegamento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Tratar de despacho aduaneiro.",
+    "texto": "tratar do desalfandegamento de {{mercadoria}}, junto dos serviços aduaneiros, pagando direitos e taxas",
+    "campos": [
+      {
+        "chave": "mercadoria",
+        "rotulo": "Bens/mercadoria",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "ADM-001",
+    "categoria": "ADMINISTRATIVOS",
+    "tipo": "PODER",
+    "nome": "Representação perante entidades públicas",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Ministérios, serviços, institutos.",
+    "texto": "representar {{flex outorgantes \"o outorgante\" \"a outorgante\" \"os outorgantes\" \"as outorgantes\"}} perante quaisquer entidades públicas, nomeadamente {{entidades}}, apresentando requerimentos e levantando documentos",
+    "campos": [
+      {
+        "chave": "entidades",
+        "rotulo": "Entidades (enumerar)",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "ADM-002",
+    "categoria": "ENT_PRIVADAS",
+    "tipo": "PODER",
+    "nome": "Representação perante entidades privadas",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Empresas, operadoras, prestadores.",
+    "texto": "representar {{flex outorgantes \"o outorgante\" \"a outorgante\" \"os outorgantes\" \"as outorgantes\"}} perante {{entidade}}, tratando de todos os assuntos relativos a {{assunto}}",
+    "campos": [
+      {
+        "chave": "entidade",
+        "rotulo": "Entidade",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      },
+      {
+        "chave": "assunto",
+        "rotulo": "Assunto",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "ADM-003",
+    "categoria": "ADMINISTRATIVOS",
+    "tipo": "PODER",
+    "nome": "Assinar e levantar documentos",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Poder instrumental.",
+    "texto": "assinar requerimentos, declarações e recibos, e requerer e levantar quaisquer documentos",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "ADM-004",
+    "categoria": "ADMINISTRATIVOS",
+    "tipo": "PODER",
+    "nome": "Pagar taxas e emolumentos",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Poder instrumental.",
+    "texto": "pagar taxas, emolumentos e demais despesas legalmente exigíveis",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "ADM-005",
+    "categoria": "ENT_PRIVADAS",
+    "tipo": "PODER",
+    "nome": "Telecomunicações",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Serviços de operadora (7% do corpus).",
+    "texto": "tratar junto da {{operadora}} de todos os assuntos relativos ao número {{numero}}, incluindo segunda via de cartão e alteração de titularidade",
+    "campos": [
+      {
+        "chave": "operadora",
+        "rotulo": "Operadora",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      },
+      {
+        "chave": "numero",
+        "rotulo": "Número de telefone",
+        "tipo": "TELEFONE",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "LAB-001",
+    "categoria": "LABORAIS",
+    "tipo": "PODER",
+    "nome": "Segurança social — pensões",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Prova de vida, pensões, prestações.",
+    "texto": "representar {{flex outorgantes \"o outorgante\" \"a outorgante\" \"os outorgantes\" \"as outorgantes\"}} junto do {{instituto}}, requerendo e recebendo pensões e demais prestações e fazendo prova de vida",
+    "campos": [
+      {
+        "chave": "instituto",
+        "rotulo": "Instituição de segurança social",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "LAB-002",
+    "categoria": "LABORAIS",
+    "tipo": "PODER",
+    "nome": "Assuntos laborais",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Perante entidade empregadora.",
+    "texto": "tratar junto da entidade empregadora {{empregador}} de assuntos laborais, receber créditos salariais e assinar a documentação necessária",
+    "campos": [
+      {
+        "chave": "empregador",
+        "rotulo": "Entidade empregadora",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "SOC-001",
+    "categoria": "SOCIETARIOS",
+    "tipo": "PODER",
+    "nome": "Constituição de sociedade",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Constituir sociedade comercial.",
+    "texto": "constituir uma sociedade {{tipo_sociedade}} com a denominação {{denominacao}}, subscrevendo o capital, aprovando estatutos e praticando os actos de registo",
+    "campos": [
+      {
+        "chave": "tipo_sociedade",
+        "rotulo": "Tipo de sociedade",
+        "tipo": "LISTA",
+        "obrigatorio": true,
+        "opcoes": [
+          {
+            "valor": "quotas",
+            "rotulo": "por quotas"
+          },
+          {
+            "valor": "unipessoal",
+            "rotulo": "unipessoal por quotas"
+          },
+          {
+            "valor": "anonima",
+            "rotulo": "anónima"
+          }
+        ]
+      },
+      {
+        "chave": "denominacao",
+        "rotulo": "Denominação",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "REG-003"
+      },
+      {
+        "tipo": "SUGERE",
+        "alvoCodigo": "FISC-002"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "SOC-002",
+    "categoria": "SOCIETARIOS",
+    "tipo": "PODER",
+    "nome": "Assembleias gerais",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Representar em assembleias e votar.",
+    "texto": "representar {{flex outorgantes \"o outorgante\" \"a outorgante\" \"os outorgantes\" \"as outorgantes\"}} nas assembleias gerais da {{empresa}}, discutindo e votando as deliberações",
+    "campos": [
+      {
+        "chave": "empresa",
+        "rotulo": "Sociedade",
+        "tipo": "EMPRESA",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "SOC-003",
+    "categoria": "SOCIETARIOS",
+    "tipo": "PODER",
+    "nome": "Cessão de quotas",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Ceder ou adquirir quota.",
+    "texto": "{{accao}} a quota com o valor nominal de {{valor}} na {{empresa}}",
+    "campos": [
+      {
+        "chave": "accao",
+        "rotulo": "Acção",
+        "tipo": "RADIO",
+        "obrigatorio": true,
+        "opcoes": [
+          {
+            "valor": "ceder",
+            "rotulo": "ceder"
+          },
+          {
+            "valor": "adquirir",
+            "rotulo": "adquirir"
+          }
+        ]
+      },
+      {
+        "chave": "valor",
+        "rotulo": "Valor nominal",
+        "tipo": "MOEDA",
+        "obrigatorio": true,
+        "moeda": "AOA"
+      },
+      {
+        "chave": "empresa",
+        "rotulo": "Sociedade",
+        "tipo": "EMPRESA",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "EMP-001",
+    "categoria": "EMPRESARIAIS",
+    "tipo": "PODER",
+    "nome": "Gestão corrente da empresa",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Actos de gestão corrente.",
+    "texto": "praticar os actos de gestão corrente da {{empresa}}, perante quaisquer entidades públicas e privadas",
+    "campos": [
+      {
+        "chave": "empresa",
+        "rotulo": "Sociedade",
+        "tipo": "EMPRESA",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "COM-001",
+    "categoria": "COMERCIAIS",
+    "tipo": "PODER",
+    "nome": "Contratos comerciais",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Negociar e assinar contratos.",
+    "texto": "negociar e assinar contratos de fornecimento e de prestação de serviços até ao valor de {{valor}}",
+    "campos": [
+      {
+        "chave": "valor",
+        "rotulo": "Valor máximo",
+        "tipo": "MOEDA",
+        "obrigatorio": true,
+        "moeda": "USD"
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "AUTO-001",
+    "categoria": "AUTOMOVEIS",
+    "tipo": "PODER",
+    "nome": "Venda de veículo",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Vender veículo identificado.",
+    "texto": "vender o {{veiculo}}, pelo preço que entender, assinando o requerimento de registo de propriedade",
+    "campos": [
+      {
+        "chave": "veiculo",
+        "rotulo": "Veículo",
+        "tipo": "VEICULO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "INCOMPATIVEL",
+        "alvoCodigo": "AUTO-002"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "AUTO-002",
+    "categoria": "AUTOMOVEIS",
+    "tipo": "PODER",
+    "nome": "Compra e registo de veículo",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Adquirir e registar veículo.",
+    "texto": "adquirir e registar em nome {{flex outorgantes \"do outorgante\" \"da outorgante\" \"dos outorgantes\" \"das outorgantes\"}} o {{veiculo}}",
+    "campos": [
+      {
+        "chave": "veiculo",
+        "rotulo": "Veículo",
+        "tipo": "VEICULO",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "SEG-001",
+    "categoria": "SEGUROS",
+    "tipo": "PODER",
+    "nome": "Contratos de seguro",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Celebrar, alterar e participar sinistros.",
+    "texto": "celebrar, alterar e resolver contratos de seguro, participar sinistros e receber indemnizações junto da {{seguradora}}",
+    "campos": [
+      {
+        "chave": "seguradora",
+        "rotulo": "Seguradora",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "MEN-001",
+    "categoria": "MENORES",
+    "tipo": "PODER",
+    "nome": "Representação de filho menor",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Actos relativos a filho menor.",
+    "texto": "representar {{flex outorgantes \"o outorgante\" \"a outorgante\" \"os outorgantes\" \"as outorgantes\"}}, no exercício das responsabilidades parentais, em todos os assuntos relativos ao menor {{menor}}, nomeadamente {{assuntos}}",
+    "campos": [
+      {
+        "chave": "menor",
+        "rotulo": "Menor",
+        "tipo": "PESSOA",
+        "obrigatorio": true
+      },
+      {
+        "chave": "assuntos",
+        "rotulo": "Assuntos",
+        "tipo": "SELECCAO_MULTIPLA",
+        "obrigatorio": true,
+        "opcoes": [
+          {
+            "valor": "esc",
+            "rotulo": "matrícula e assuntos escolares"
+          },
+          {
+            "valor": "saude",
+            "rotulo": "assuntos de saúde"
+          },
+          {
+            "valor": "doc",
+            "rotulo": "emissão de documentos de identificação"
+          },
+          {
+            "valor": "viag",
+            "rotulo": "autorização de viagem"
+          }
+        ]
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "MEN-002",
+    "categoria": "MENORES",
+    "tipo": "PODER",
+    "nome": "Autorização de viagem de menor",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Viagem de menor acompanhado pelo procurador.",
+    "texto": "acompanhar o menor {{menor}} em viagem para {{destino}}, entre {{data_inicio}} e {{data_fim}}",
+    "campos": [
+      {
+        "chave": "menor",
+        "rotulo": "Menor",
+        "tipo": "PESSOA",
+        "obrigatorio": true
+      },
+      {
+        "chave": "destino",
+        "rotulo": "Destino",
+        "tipo": "TEXTO",
+        "obrigatorio": true
+      },
+      {
+        "chave": "data_inicio",
+        "rotulo": "Início",
+        "tipo": "DATA",
+        "obrigatorio": true
+      },
+      {
+        "chave": "data_fim",
+        "rotulo": "Fim",
+        "tipo": "DATA",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "GER-001",
+    "categoria": "GERAL",
+    "tipo": "PODER",
+    "nome": "Plenos poderes de administração",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Procuração geral — não combinável.",
+    "texto": "gerir e administrar todos os bens {{flex outorgantes \"do outorgante\" \"da outorgante\" \"dos outorgantes\" \"das outorgantes\"}}, praticando todos os actos de administração ordinária",
+    "campos": [],
+    "regras": [],
+    "exclusivo": true,
+    "tiposPermitidos": [
+      "GERAL"
+    ],
+    "publicar": false
+  },
+  {
+    "codigo": "NOT-001",
+    "categoria": "NOTARIADO",
+    "tipo": "PODER",
+    "nome": "Outorgar escrituras",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Outorgar escrituras e documentos autenticados.",
+    "texto": "outorgar escrituras públicas e documentos particulares autenticados relativos aos actos aqui previstos",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "OUT-001",
+    "categoria": "OUTROS",
+    "tipo": "PODER",
+    "nome": "Poder de encerramento (actos necessários)",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Fórmula instrumental de fecho.",
+    "texto": "praticar todos os demais actos necessários, úteis e convenientes ao bom e cabal cumprimento do presente mandato",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "CL-SUB",
+    "categoria": "CLAUSULAS",
+    "tipo": "CLAUSULA",
+    "nome": "Substabelecimento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Permite substabelecer.",
+    "texto": "Os poderes conferidos podem ser substabelecidos, no todo ou em parte, {{modo}}.",
+    "campos": [
+      {
+        "chave": "modo",
+        "rotulo": "Modo",
+        "tipo": "RADIO",
+        "obrigatorio": true,
+        "opcoes": [
+          {
+            "valor": "com",
+            "rotulo": "com reserva"
+          },
+          {
+            "valor": "sem",
+            "rotulo": "com ou sem reserva"
+          }
+        ]
+      }
+    ],
+    "regras": [
+      {
+        "tipo": "INCOMPATIVEL",
+        "alvoCodigo": "CL-NSUB"
+      }
+    ],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "CL-NSUB",
+    "categoria": "CLAUSULAS",
+    "tipo": "CLAUSULA",
+    "nome": "Proibição de substabelecimento",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Proíbe substabelecer.",
+    "texto": "Os poderes conferidos não podem ser substabelecidos.",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "CL-VAL",
+    "categoria": "CLAUSULAS",
+    "tipo": "CLAUSULA",
+    "nome": "Prazo de validade",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Validade até data ou revogação.",
+    "texto": "{{#if data_fim}}A presente procuração é válida até {{data_fim}}.{{else}}A presente procuração produz efeitos a partir da data da sua assinatura e mantém-se em vigor até à sua revogação.{{/if}}",
+    "campos": [
+      {
+        "chave": "data_fim",
+        "rotulo": "Válida até (vazio = até revogação)",
+        "tipo": "DATA",
+        "obrigatorio": false
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "CL-IRR",
+    "categoria": "CLAUSULAS",
+    "tipo": "CLAUSULA",
+    "nome": "Irrevogabilidade",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Procuração conferida também no interesse do procurador (3% do corpus).",
+    "texto": "A presente procuração é conferida também no interesse {{flex procuradores \"do procurador\" \"da procuradora\" \"dos procuradores\" \"das procuradoras\"}}, sendo irrevogável nos termos da lei.",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  },
+  {
+    "codigo": "CL-CONTAS",
+    "categoria": "CLAUSULAS",
+    "tipo": "CLAUSULA",
+    "nome": "Prestação de contas",
+    "descricao": "[A VALIDAR PELO JURÍDICO] Dever de prestar contas.",
+    "texto": "{{flex procuradores \"O procurador\" \"A procuradora\" \"Os procuradores\" \"As procuradoras\"}} {{flex procuradores \"deverá\" \"deverá\" \"deverão\" \"deverão\"}} prestar contas dos actos praticados ao abrigo deste mandato.",
+    "campos": [],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [],
+    "publicar": false
+  }
+]

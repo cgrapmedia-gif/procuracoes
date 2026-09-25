@@ -1,0 +1,21 @@
+{
+  "name": "procuracoes-platform",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @proc/core && npm run build -w @proc/api && npm run build -w @proc/web",
+    "test": "npm test -w @proc/core && npm test -w @proc/api",
+    "db:migrate": "npm run db:migrate -w @proc/api",
+    "db:seed": "npm run db:seed -w @proc/api",
+    "dev:api": "npm run dev -w @proc/api",
+    "dev:web": "npm run dev -w @proc/web",
+    "test:e2e": "npm run test:e2e -w @proc/web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

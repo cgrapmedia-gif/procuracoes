@@ -1,0 +1,12 @@
+# Nunca enviar para o contexto de build: segredos, dependências locais, artefactos
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+**/.next
+**/.storage
+**/test-results
+**/playwright-report
+.git
+docs/ecras
