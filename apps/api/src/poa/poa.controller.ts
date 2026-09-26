@@ -22,7 +22,8 @@ export class PoaController {
 
   @Post('poas/:id/transitions') @Requer('poa.read')
   transicao(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(Transicao)) b: z.infer<typeof Transicao>, @Actor() u: Utilizador) {
-    return b.accao === 'EMITIR' ? this.emissao.emitir(id, u) : this.svc.transitar(id, b.accao, b.motivo, u);
+    if (b.accao === 'EMITIR' || b.accao === 'EMITIR_DIRECTO') return this.emissao.emitir(id, u, b.accao === 'EMITIR_DIRECTO');
+    return this.svc.transitar(id, b.accao, b.motivo, u);
   }
 
   /** Pré-visualização HTML (no ecrã). CSP restritiva: sem scripts, sem recursos externos. */

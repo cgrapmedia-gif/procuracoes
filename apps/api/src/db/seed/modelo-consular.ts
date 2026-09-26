@@ -1,32 +1,71 @@
 import { DefinicaoModelo } from '@proc/core';
+import { INSIGNIA_PNG, RODAPE_GOVERNO_PNG } from './imagens-posto';
 
 /**
- * Modelo institucional DEMO — reproduz a ESTRUTURA observada nas 1 189 procurações analisadas
- * (cabeçalho, título com traços, comparência perante o oficiante, verificação de identidade, "E POR ELE FOI DITO",
- * constituição de procurador, poderes, encerramento, leitura, assinaturas). Texto sujeito a validação jurídica.
+ * Modelo documental do Consulado Geral da República de Angola no Porto, reproduzindo o formato
+ * das procurações emitidas pelo posto (Word de referência de Setembro de 2026):
+ *  - cabeçalho só na 1.ª página: insígnia, "REPÚBLICA DE ANGOLA" e "Consulado Geral no Porto" (9 pt);
+ *  - moldura: linhas verticais à esquerda e à direita do texto em todas as páginas;
+ *  - cada troço num parágrafo que começa com traços e fecha com traços até ao fim da linha;
+ *  - nomes das partes e das entidades em maiúsculas e negrito;
+ *  - assinatura do outorgante à esquerda e do oficiante ao centro;
+ *  - rodapé com contactos do posto (barra vermelha) e símbolos do Governo de Angola / MIREX, só no fim do documento;
+ *  - sem numeração de páginas.
  */
 const O = (ms: string, fs: string, mp: string, fp: string) => `{{flex outorgantes "${ms}" "${fs}" "${mp}" "${fp}"}}`;
+const T = '-----'; // separador entre troços do texto corrido
 
-export const modeloConsular = (modo: 'PROSA' | 'LISTA'): DefinicaoModelo => ({
-  pagina: { formato: 'A4', margens: { topo: 2, direita: 2.3, fundo: 2.2, esquerda: 2.5 } },
-  tipografia: { fonte: 'Merriweather', tamanho: 12, entrelinha: 1.5 },
-  preenchimento: { activo: true, caracter: '-' },
-  poderes: modo === 'PROSA' ? { modo: 'PROSA', separador: '; ', ultimoSeparador: '; e ' } : { modo: 'LISTA', numeracao: 'a)' },
-  cabecalho: { linhas: [{ texto: 'REPÚBLICA DE ANGOLA', negrito: true }, { texto: '{{posto.nome}}' }] },
-  blocos: [
-    { tipo: 'titulo', texto: 'PROCURAÇÃO', preencher: true },
-    { tipo: 'paragrafo', texto: `No dia {{documento.dataExtenso}}, neste {{posto.nomeCompleto}}, sito na {{posto.morada}}, perante mim, **{{upper oficiante.nome}}**, {{oficiante.cargo}}, com plenos poderes, ${O('compareceu como outorgante', 'compareceu como outorgante', 'compareceram como outorgantes', 'compareceram como outorgantes')}: {{outorgantesIdentificacao}}.` },
-    { tipo: 'paragrafo', texto: `VERIFIQUEI A IDENTIDADE ${O('DO OUTORGANTE', 'DA OUTORGANTE', 'DOS OUTORGANTES', 'DAS OUTORGANTES')}, ${O('pelo mencionado documento que me foi apresentado e o restituí', 'pelo mencionado documento que me foi apresentado e o restituí', 'pelos mencionados documentos que me foram apresentados e os restituí', 'pelos mencionados documentos que me foram apresentados e os restituí')}.` },
-    { tipo: 'paragrafo', texto: `E POR ${O('ELE', 'ELA', 'ELES', 'ELAS')} FOI DITO:` },
-    {
-      tipo: 'paragrafo',
-      texto: `Que, pelo presente instrumento, ${O('constitui', 'constitui', 'constituem', 'constituem')} {{flex procuradores "seu bastante procurador" "sua bastante procuradora" "seus bastantes procuradores" "suas bastantes procuradoras"}} {{procuradoresIdentificacao}}{{#if formaActuacao}}, {{formaActuacao}}{{/if}}, a quem ${O('confere', 'confere', 'conferem', 'conferem')} os poderes necessários para, em nome e representação ${O('do outorgante', 'da outorgante', 'dos outorgantes', 'das outorgantes')}` + (modo === 'PROSA' ? ', {{poderes}}.' : ':'),
+export const CONTACTOS_POSTO = [
+  'Rua Dr. Carlos Cal Brandão 132/138',
+  '4050-160 Porto - Portugal',
+  'Telf.: (+351) 222 058 902',
+  'Fax:   (+351) 222 050 228',
+  'consuladogangola@mail.telepac.pt • www.consuladogeralangola-porto.pt',
+];
+
+export const modeloConsular = (modo: 'PROSA' | 'LISTA'): DefinicaoModelo => {
+  // Cada troço é um parágrafo que começa com "-----" e fecha com traços até ao fim da linha (como no Word do posto)
+  const P = (texto: string, extra: Partial<{ seExiste: string }> = {}) => ({ tipo: 'paragrafo' as const, texto: `${T}${texto}`, preencher: true, ...extra });
+  const constituicao =
+    `**Que,** pelo presente instrumento, ${O('constitui', 'constitui', 'constituem', 'constituem')} {{flex procuradores "seu bastante procurador" "sua bastante procuradora" "seus bastantes procuradores" "suas bastantes procuradoras"}} {{procuradoresIdentificacao}}{{#if formaActuacao}}, {{formaActuacao}}{{/if}}, a quem ${O('confere', 'confere', 'conferem', 'conferem')} poderes necessários de representação para`;
+
+  return {
+    pagina: { formato: 'A4', margens: { topo: 1, direita: 2.27, fundo: 1.2, esquerda: 2.54 } },
+    tipografia: { fonte: 'Merriweather', tamanho: 12, entrelinha: 1.5, espacoParagrafo: 0 },
+    preenchimento: { activo: true, caracter: '-' },
+    moldura: { activa: true, espessura: 1.5 },
+    poderes: modo === 'PROSA' ? { modo: 'PROSA', separador: '; ', ultimoSeparador: '; e ' } : { modo: 'LISTA', numeracao: 'a)' },
+    cabecalho: {
+      logotipo: INSIGNIA_PNG,
+      logotipoLarguraCm: 2.05,
+      linhas: [
+        { texto: 'REPÚBLICA DE ANGOLA', negrito: true, tamanho: 9, fonte: "'Pragati Narrow', 'Arial Narrow', Arial, sans-serif" },
+        { texto: '{{posto.nome}}', tamanho: 9 },
+      ],
     },
-    ...(modo === 'LISTA' ? [{ tipo: 'poderes' as const }] : []),
-    { tipo: 'paragrafo', texto: '{{clausulas}}', seExiste: 'clausulas' },
-    { tipo: 'paragrafo', texto: `ASSIM O ${O('DISSE E OUTORGOU', 'DISSE E OUTORGOU', 'DISSERAM E OUTORGARAM', 'DISSERAM E OUTORGARAM')}.` },
-    { tipo: 'paragrafo', texto: `${O('Ao outorgante', 'À outorgante', 'Aos outorgantes', 'Às outorgantes')} fiz, em voz alta e na sua presença, a leitura e a explicação do conteúdo desta procuração.` },
-    { tipo: 'assinaturas', itens: [{ rotulo: O('O OUTORGANTE', 'A OUTORGANTE', 'OS OUTORGANTES', 'AS OUTORGANTES') }, { rotulo: '{{upper oficiante.cargo}}', nome: '{{upper oficiante.nome}}' }] },
-  ],
-  rodape: { texto: '{{documento.numero}}', paginacao: true },
-});
+    blocos: [
+      { tipo: 'titulo', texto: 'PROCURAÇÃO', preencher: true },
+      P(`No dia {{documento.dataExtenso}}, neste {{posto.nomeCompleto}}, sito na {{posto.morada}}, perante mim, **{{upper oficiante.nome}}**, {{oficiante.cargo}}, com plenos poderes, ${O('compareceu como outorgante', 'compareceu como outorgante', 'compareceram como outorgantes', 'compareceram como outorgantes')}:`),
+      P('{{outorgantesIdentificacao}}.'),
+      P(`**VERIFIQUEI A IDENTIDADE ${O('DO OUTORGANTE', 'DA OUTORGANTE', 'DOS OUTORGANTES', 'DAS OUTORGANTES')}**, ${O('pelo mencionado documento que me foi apresentado e o restituí', 'pelo mencionado documento que me foi apresentado e a restituí', 'pelos mencionados documentos que me foram apresentados e os restituí', 'pelos mencionados documentos que me foram apresentados e as restituí')}.`),
+      P(`**E POR ${O('ELE', 'ELA', 'ELES', 'ELAS')} FOI DITO**:`),
+      ...(modo === 'PROSA' ? [P(`${constituicao}, {{poderes}}`)] : [P(`${constituicao}:`), { tipo: 'poderes' as const }]),
+      P('{{clausulas}}', { seExiste: 'clausulas' }),
+      P(`**ASSIM O ${O('DISSE E OUTORGOU', 'DISSE E OUTORGOU', 'DISSERAM E OUTORGARAM', 'DISSERAM E OUTORGARAM')}**`),
+      P(`${O('Ao outorgante', 'À outorgante', 'Aos outorgantes', 'Às outorgantes')} fiz, em voz alta e na sua presença a leitura e a explicação do conteúdo desta procuração.`),
+      {
+        tipo: 'assinaturas',
+        itens: [
+          { rotulo: O('O OUTORGANTE', 'A OUTORGANTE', 'OS OUTORGANTES', 'AS OUTORGANTES'), alinhamento: 'ESQUERDA' },
+          { rotulo: 'O {{upper oficiante.cargo}}', nome: '{{upper oficiante.nome}}' },
+        ],
+      },
+    ],
+    // Sem numeração de páginas nem linha de controlo; rodapé institucional só no fim do documento
+    rodape: {
+      texto: '',
+      paginacao: false,
+      bloco: { contactos: CONTACTOS_POSTO, corBarra: '#E30613', imagem: RODAPE_GOVERNO_PNG, imagemAlturaCm: 1.05, tamanho: 6, apenasUltimaPagina: true, alturaReservadaCm: 2.6 },
+    },
+  };
+};

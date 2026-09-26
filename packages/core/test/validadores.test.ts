@@ -20,3 +20,22 @@ describe('validadores', () => {
       .toBe('prédio urbano sito em Rua Exemplo, 1, inscrito na matriz sob o artigo 1234, descrito na Conservatória do Registo Predial do Porto sob o n.º 567');
   });
 });
+
+import { contracao, formatarMorada } from '../src';
+describe('estilo do posto (morada, preposições, entidades)', () => {
+  it('morada como nas procurações do posto', () => {
+    expect(formatarMorada({ linha: 'Rua Maria Lina Alves Maia, 66', codigoPostal: '4470-397', localidade: 'Maia', pais: 'Portugal' })).toBe('Rua Maria Lina Alves Maia, 66, Código Postal 4470-397, concelho de Maia – Portugal');
+    expect(formatarMorada({ linha: 'Rua Casa S/N.º, Alto Liro', concelho: 'Baía Farta', provincia: 'Benguela' })).toBe('Rua Casa S/N.º, Alto Liro, concelho de Baía Farta, Província de Benguela');
+  });
+  it('contracções', () => {
+    expect(contracao('Rua X', 'em')).toBe('na Rua X');
+    expect(contracao('Largo Y', 'em')).toBe('no Largo Y');
+    expect(contracao('Município de Baía Farta, Província de Benguela', 'de')).toBe('do Município de Baía Farta, Província de Benguela');
+    expect(contracao('Luanda', 'de')).toBe('de Luanda');
+  });
+  it('entidade em maiúsculas e negrito, com sigla', () => {
+    const def = { chave: 'banco', rotulo: 'Banco', tipo: 'ENTIDADE' as const, obrigatorio: true };
+    expect(formatarCampo(def, { id: '1', nome: 'Banco Angolano de Investimento', sigla: 'BAI' })).toBe('**BAI – BANCO ANGOLANO DE INVESTIMENTO**');
+    expect(formatarCampo(def, { id: '1', nome: 'Banco Demo, S.A.' })).toBe('**BANCO DEMO, S.A.**');
+  });
+});

@@ -14,7 +14,7 @@ import { Utilizador } from '../../common/http';
 import { hashPassword } from '../../auth/auth.service';
 import { PowersService } from '../../powers/powers.service';
 import { PersonsService, PessoaDto } from '../../persons/persons.service';
-import { CATEGORIAS, PODERES } from './poderes-demo';
+import { TODAS_CATEGORIAS as CATEGORIAS, PODERES } from './poderes-demo';
 import { modeloConsular } from './modelo-consular';
 import type { Db } from '../db.module';
 
@@ -24,21 +24,23 @@ export const PERMISSOES: [string, string][] = [
   ['power.read', 'Consultar catálogo de poderes'], ['power.manage', 'Criar/editar poderes (rascunho)'], ['power.publish', 'Publicar versões de poderes'], ['power.import', 'Importar poderes'],
   ['person.read', 'Consultar pessoas'], ['person.manage', 'Criar/editar pessoas'],
   ['poa.read', 'Consultar procurações'], ['poa.create', 'Criar procurações'], ['poa.edit', 'Editar rascunhos'], ['poa.submit', 'Submeter para revisão'], ['poa.validate', 'Validar/devolver'],
-  ['poa.issue', 'Emitir e registar assinatura'], ['poa.cancel', 'Cancelar'], ['poa.archive', 'Arquivar'], ['poa.custom_power', 'Usar poderes personalizados'],
+  ['poa.issue', 'Emitir e registar assinatura'], ['poa.issue_direct', 'Emitir directamente, sem revisão por terceiros'], ['poa.cancel', 'Cancelar'], ['poa.archive', 'Arquivar'], ['poa.custom_power', 'Usar poderes personalizados'],
   ['document.download', 'Descarregar documentos'], ['template.read', 'Consultar modelos'], ['template.manage', 'Editar modelos'], ['template.publish', 'Publicar modelos'],
+  ['entity.create', 'Acrescentar entidades (bancos, conservatórias…) durante a redacção'],
   ['catalog.manage', 'Gerir entidades, tipos e modelos institucionais'], ['user.manage', 'Gerir utilizadores e perfis'], ['audit.read', 'Consultar auditoria'], ['export.run', 'Exportar dados'],
 ];
 export const PERFIS: Record<string, { nome: string; perms: string[] | 'todas' }> = {
   ADMINISTRADOR: { nome: 'Administrador', perms: 'todas' },
-  OPERADOR: { nome: 'Operador', perms: ['power.read', 'person.read', 'person.manage', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'document.download', 'template.read'] },
-  VALIDADOR: { nome: 'Validador', perms: ['power.read', 'person.read', 'poa.read', 'poa.validate', 'poa.issue', 'poa.cancel', 'poa.archive', 'document.download', 'template.read', 'audit.read', 'export.run'] },
+  OPERADOR: { nome: 'Operador', perms: ['power.read', 'person.read', 'person.manage', 'entity.create', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'document.download', 'template.read'] },
+  VALIDADOR: { nome: 'Validador', perms: ['power.read', 'person.read', 'entity.create', 'poa.read', 'poa.validate', 'poa.issue', 'poa.cancel', 'poa.archive', 'document.download', 'template.read', 'audit.read', 'export.run'] },
+  EMISSOR: { nome: 'Emissor autónomo (faz a procuração completa)', perms: ['power.read', 'person.read', 'person.manage', 'entity.create', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'poa.validate', 'poa.issue', 'poa.issue_direct', 'poa.cancel', 'poa.archive', 'document.download', 'template.read', 'export.run'] },
   CONSULTA: { nome: 'Consulta', perms: ['power.read', 'person.read', 'poa.read', 'document.download'] },
 };
 
 export const TIPOS_POA: [string, string, 'PROSA' | 'LISTA', string[]][] = [
   ['GERAL', 'Procuração Geral', 'LISTA', ['GER-001', 'CL-VAL']],
   ['ESPECIAL', 'Procuração Especial', 'PROSA', []],
-  ['BANCARIA', 'Procuração Bancária', 'PROSA', ['BANC-001', 'BANC-002', 'BANC-007']],
+  ['BANCARIA', 'Procuração Bancária', 'PROSA', ['BANC-008']],
   ['IMOVEL_VENDA', 'Procuração para Venda de Imóvel', 'PROSA', ['IMOV-001', 'IMOV-004', 'REG-002']],
   ['IMOVEL_COMPRA', 'Procuração para Compra de Imóvel', 'PROSA', ['IMOV-002', 'REG-002', 'FISC-001']],
   ['EMPRESARIAL', 'Procuração Empresarial', 'LISTA', ['EMP-001', 'SOC-002']],
@@ -74,7 +76,7 @@ async function main() {
 
   await db.transaction(async (tx) => {
     const [org] = await tx.insert(s.organizations).values({ code: 'DEMO', name: 'Consulado Geral no Porto (DEMO)', fullName: 'Consulado Geral da República de Angola (ambiente de DEMONSTRAÇÃO)', address: 'Rua de Demonstração, n.º 1, freguesia de Exemplo, Código Postal 4000-000, concelho do Porto', city: 'Porto', isDemo: true }).returning();
-    await tx.insert(s.permissions).values(PERMISSOES.map(([code, description]) => ({ code, description })));
+    await tx.insert(s.permissions).values(PERMISSOES.map(([code, description]) => ({ code, description }))).onConflictDoNothing();
     const roleIds: Record<string, string> = {};
     for (const [code, p] of Object.entries(PERFIS)) {
       const [r] = await tx.insert(s.roles).values({ code, name: p.nome, system: true }).returning();
@@ -103,7 +105,7 @@ async function main() {
     ].map(([type, name, shortName]) => ({ orgId: org.id, type: type!, name: name!, shortName, isDemo: true })));
 
     let ordem = 0;
-    for (const [code, name] of CATEGORIAS) await tx.insert(s.powerCategories).values({ code, name, sort: ordem++ });
+    for (const [code, name] of CATEGORIAS) await tx.insert(s.powerCategories).values({ code, name, sort: ordem++ }).onConflictDoNothing();
 
     // Poderes em duas fases (regras cruzadas): cria todos, depois publica.
     const criados: { id: string; versaoId: string }[] = [];

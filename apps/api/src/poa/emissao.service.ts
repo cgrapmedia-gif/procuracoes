@@ -35,11 +35,12 @@ export class EmissaoService {
     return formatarNumeroDocumento({ padrao: r.pattern, prefixo: r.prefix, serie: r.series, digitos: r.digits }, ano, r.lastValue);
   }
 
-  async emitir(id: string, u: Utilizador) {
+  /** directa=true: emissão directa a partir do rascunho (permissão poa.issue_direct), sem revisão por terceiros. */
+  async emitir(id: string, u: Utilizador, directa = false) {
     return this.db.transaction(async (tx) => {
       const [linha] = await tx.select().from(s.powersOfAttorney).where(and(eq(s.powersOfAttorney.id, id), eq(s.powersOfAttorney.orgId, u.orgId))).for('update');
       if (!linha) throw new NotFoundException();
-      transitar(linha.status as Estado, 'EMITIR', { permissoes: new Set(u.permissoes) });
+      transitar(linha.status as Estado, directa ? 'EMITIR_DIRECTO' : 'EMITIR', { permissoes: new Set(u.permissoes) });
       const c = await this.poa.carregar(tx, id, u);
       const r = this.poa.avaliar(c);
       if (!r.pronta) throw new ConflictException({ message: 'Não é possível emitir: existem pendências.', checklist: r.checklist });
@@ -60,7 +61,7 @@ export class EmissaoService {
       const verif = codigoVerificacao();
       const rodapeExtra = `Verificação ${verif.slice(0, 4)}-${verif.slice(4)} · ${contentHash.slice(0, 12)}`;
 
-      const [pdf, docx] = await Promise.all([this.pdf.gerar(doc, rodapeExtra), renderizarDocx({ ...doc, rodape: `${doc.rodape} · ${rodapeExtra}` })]);
+      const [pdf, docx] = await Promise.all([this.pdf.gerar(doc, rodapeExtra), renderizarDocx(doc.rodape || doc.paginacao ? { ...doc, rodape: `${doc.rodape} · ${rodapeExtra}` } : doc)]);
       const ficheiros = [
         { kind: 'PDF' as const, buf: pdf, mime: 'application/pdf', ext: 'pdf' },
         { kind: 'DOCX' as const, buf: docx, mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: 'docx' },
@@ -73,11 +74,12 @@ export class EmissaoService {
       await tx.update(s.powersOfAttorney).set({
         status: 'EMITIDA', number: numero, snapshot: { enc: this.crypto.encrypt(json) }, contentHash, verificationCode: verif,
         issuedBy: u.id, issuedAt: new Date(), updatedBy: u.id, updatedAt: new Date(), lockVersion: linha.lockVersion + 1,
+        ...(directa ? { validatedBy: u.id, validatedAt: new Date() } : {}),
       }).where(eq(s.powersOfAttorney.id, id));
       const powerIds = [...new Set([...c.dados.poderes, ...clausulas].filter((p) => !p.personalizado).map((p) => p.versao.poderId))];
       if (powerIds.length) await tx.update(s.powers).set({ usageCount: sql`${s.powers.usageCount} + 1` }).where(inArray(s.powers.id, powerIds));
-      await this.poa.historico(tx, id, 'VALIDADA', 'EMITIDA', 'EMITIR', u);
-      await this.audit.log(tx, u, 'POA_EMITIR', 'poa', id, { numero, contentHash, pdfSha256: CryptoService.sha256(pdf) });
+      await this.poa.historico(tx, id, linha.status as Estado, 'EMITIDA', directa ? 'EMITIR_DIRECTO' : 'EMITIR', u, directa ? 'Emissão directa (sem revisão por terceiros)' : undefined);
+      await this.audit.log(tx, u, directa ? 'POA_EMITIR_DIRECTO' : 'POA_EMITIR', 'poa', id, { numero, contentHash, pdfSha256: CryptoService.sha256(pdf), de: linha.status });
       return { id, numero, contentHash, codigoVerificacao: verif };
     });
   }

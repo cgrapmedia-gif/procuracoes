@@ -9,7 +9,8 @@ import { Db, InjectDb } from '../db/db.module';
 import * as s from '../db/schema';
 
 const Oficiante = z.object({ nome: z.string().min(3).max(200), cargo: z.string().min(3).max(120), utilizadorId: z.string().uuid().optional() });
-const Entidade = z.object({ tipo: z.string().min(2).max(40), nome: z.string().min(2).max(200), sigla: z.string().max(40).optional(), nif: z.string().max(20).optional() });
+export const TIPOS_ENTIDADE = ['BANCO', 'CONSERVATORIA', 'TRIBUNAL', 'SEGURANCA_SOCIAL', 'ADMIN_TRIBUTARIA', 'OPERADORA', 'SEGURADORA', 'EMPRESA', 'SERVICO_PUBLICO', 'OUTRA'] as const;
+const Entidade = z.object({ tipo: z.enum(TIPOS_ENTIDADE), nome: z.string().trim().min(3, 'Indique o nome oficial completo').max(200), sigla: z.string().max(40).optional(), nif: z.string().max(20).optional() });
 const ModeloGuardado = z.object({ nome: z.string().min(3).max(120), ambito: z.enum(['PESSOAL', 'INSTITUCIONAL']), tipoCodigo: z.string().optional(), itens: z.array(z.object({ codigo: z.string(), valores: z.record(z.unknown()).optional() })).min(1).max(200) });
 
 @Controller()
@@ -34,9 +35,23 @@ export class CatalogController {
   entidades(@Actor() u: Utilizador, @Query('tipo') tipo?: string) {
     return this.db.select().from(s.entities).where(and(eq(s.entities.orgId, u.orgId), eq(s.entities.active, true), tipo ? eq(s.entities.type, tipo) : undefined)).orderBy(asc(s.entities.name));
   }
-  @Post('entities') @Requer('catalog.manage')
-  criarEntidade(@Body(new ZodPipe(Entidade)) b: z.infer<typeof Entidade>, @Actor() u: Utilizador) {
-    return this.db.transaction(async (tx) => { const [e] = await tx.insert(s.entities).values({ orgId: u.orgId, type: b.tipo, name: b.nome, shortName: b.sigla, nif: b.nif }).returning(); await this.audit.log(tx, u, 'ENTIDADE_CRIAR', 'entity', e.id, b); return e; });
+  /**
+   * Acrescentar entidade durante a redacção (ex.: um banco que ainda não está na lista).
+   * Se já existir uma com o mesmo tipo e nome (ou sigla), devolve essa em vez de duplicar.
+   */
+  @Post('entities') @Requer('entity.create')
+  async criarEntidade(@Body(new ZodPipe(Entidade)) b: z.infer<typeof Entidade>, @Actor() u: Utilizador) {
+    const nome = b.nome.trim().replace(/\s+/g, ' ');
+    const sigla = b.sigla?.trim().replace(/\s+/g, ' ') || null;
+    const norm = (x: string) => x.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const mesmas = await this.db.select().from(s.entities).where(and(eq(s.entities.orgId, u.orgId), eq(s.entities.type, b.tipo)));
+    const existente = mesmas.find((e) => norm(e.name) === norm(nome) || (!!sigla && !!e.shortName && norm(e.shortName) === norm(sigla)));
+    if (existente) return { ...existente, existente: true };
+    return this.db.transaction(async (tx) => {
+      const [e] = await tx.insert(s.entities).values({ orgId: u.orgId, type: b.tipo, name: nome, shortName: sigla, nif: b.nif?.trim() || null }).returning();
+      await this.audit.log(tx, u, 'ENTIDADE_CRIAR', 'entity', e.id, { tipo: b.tipo, nome, sigla });
+      return { ...e, existente: false };
+    });
   }
 
   // ─── Modelos documentais (versionados como os poderes) ───

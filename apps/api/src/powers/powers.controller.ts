@@ -31,6 +31,12 @@ export class PowersController {
   @Get('powers') @Requer('power.read')
   pesquisar(@Query(new ZodPipe(PesquisaPoderes)) q: z.infer<typeof PesquisaPoderes>, @Actor() u: Utilizador) { return this.svc.pesquisar(q, u); }
 
+  @Get('powers/export') @Requer('power.manage')
+  exportar() { return this.svc.exportar(); }
+
+  @Post('powers/publish-batch') @Requer('power.publish')
+  publicarLote(@Body(new ZodPipe(z.object({ ids: z.array(z.string().uuid()).min(1).max(500) }))) b: { ids: string[] }, @Actor() u: Utilizador) { return this.svc.publicarLote(b.ids, u); }
+
   @Get('powers/:id') @Requer('power.read')
   obter(@Param('id', ParseUUIDPipe) id: string) { return this.svc.obter(id); }
 

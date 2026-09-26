@@ -29,7 +29,7 @@ export interface Morada { linha: string; codigoPostal?: string; localidade?: str
 export interface Imovel { tipo?: string; morada: string; freguesia?: string; concelho?: string; artigoMatricial?: string; conservatoria?: string; descricaoPredial?: string }
 export interface Veiculo { marca: string; modelo?: string; matricula: string; quadro?: string }
 export interface Empresa { denominacao: string; nif?: string; sede?: string; matricula?: string }
-export interface RefEntidade { id: string; nome: string; texto?: string }
+export interface RefEntidade { id: string; nome: string; sigla?: string; texto?: string }
 export interface RefPessoa { id: string; nome: string; texto?: string }
 
 export type ValorCampo = string | number | boolean | string[] | Morada | Imovel | Veiculo | Empresa | RefEntidade | RefPessoa | null | undefined;
@@ -100,11 +100,40 @@ export function formatarCampo(def: DefinicaoCampo, valor: ValorCampo): string {
     case 'CHECKBOX': return valor ? (def.textoVerdadeiro ?? 'sim') : (def.textoFalso ?? '');
     case 'LISTA': case 'RADIO': return rotuloOpcao(def, String(valor));
     case 'SELECCAO_MULTIPLA': return juntarLista((valor as string[]).map((x) => rotuloOpcao(def, x)));
-    case 'MORADA': { const m = valor as Morada; return [m.linha, m.codigoPostal && m.localidade ? `${m.codigoPostal} ${m.localidade}` : m.localidade, m.concelho && `concelho de ${m.concelho}`, m.provincia && `Província de ${m.provincia}`, m.pais].filter(Boolean).join(', '); }
+    case 'MORADA': return formatarMorada(valor as Morada);
     case 'IMOVEL': { const i = valor as Imovel; return [`${i.tipo ?? 'imóvel'} sito em ${i.morada}`, i.freguesia && `freguesia de ${i.freguesia}`, i.concelho && `concelho de ${i.concelho}`, i.artigoMatricial && `inscrito na matriz sob o artigo ${i.artigoMatricial}`, i.conservatoria && i.descricaoPredial && `descrito na ${i.conservatoria} sob o n.º ${i.descricaoPredial}`].filter(Boolean).join(', '); }
     case 'VEICULO': { const v = valor as Veiculo; return [`veículo automóvel da marca ${v.marca}`, v.modelo && `modelo ${v.modelo}`, `com a matrícula ${v.matricula}`, v.quadro && `n.º de quadro ${v.quadro}`].filter(Boolean).join(', '); }
     case 'EMPRESA': { const c = valor as Empresa; return [`${c.denominacao}`, c.nif && `NIF ${c.nif}`, c.sede && `com sede em ${c.sede}`, c.matricula && `matriculada sob o n.º ${c.matricula}`].filter(Boolean).join(', '); }
-    case 'ENTIDADE': case 'PESSOA': { const r = valor as RefEntidade; return r.texto ?? r.nome; }
+    // Entidades em maiúsculas e negrito, com a sigla à frente (ex.: **BAI – BANCO ANGOLANO DE INVESTIMENTO**), como no modelo do posto
+    case 'ENTIDADE': { const r = valor as RefEntidade; if (r.texto) return r.texto; const nome = r.nome.toLocaleUpperCase('pt'); const sigla = r.sigla?.trim().toLocaleUpperCase('pt'); return `**${sigla && !nome.startsWith(sigla) ? `${sigla} – ${nome}` : nome}**`; }
+    case 'PESSOA': { const r = valor as RefEntidade; return r.texto ?? r.nome; }
     default: return String(valor);
   }
+}
+
+
+/**
+ * Morada no estilo das procurações do posto:
+ * "Rua Maria Lina Alves Maia, 66, Código Postal 4470-397, concelho de Maia – Portugal"
+ * "Rua Casa S/N.º, Alto Liro, concelho de Baía Farta, Província de Benguela – Angola"
+ */
+export function formatarMorada(m: Morada): string {
+  const partes = [m.linha?.trim()];
+  if (m.codigoPostal) partes.push(`Código Postal ${m.codigoPostal.trim()}`);
+  const concelho = m.concelho?.trim() || m.localidade?.trim();
+  if (concelho) partes.push(`concelho de ${concelho}`);
+  if (m.provincia) partes.push(`Província de ${m.provincia.trim()}`);
+  const base = partes.filter(Boolean).join(', ');
+  return m.pais?.trim() ? `${base} – ${m.pais.trim()}` : base;
+}
+
+/** Preposição + artigo antes de um topónimo: "na Rua…", "no Largo…", "do Município…", "em Luanda". */
+export function contracao(texto: string, prep: 'em' | 'de'): string {
+  const t = texto.trim();
+  const primeira = t.split(/[\s,]+/)[0]?.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '') ?? '';
+  const FEM = ['rua', 'avenida', 'av.', 'travessa', 'praca', 'estrada', 'alameda', 'urbanizacao', 'quinta', 'vila', 'aldeia', 'provincia', 'comuna', 'cidade', 'freguesia', 'vivenda', 'casa', 'zona', 'centralidade'];
+  const MASC = ['largo', 'bairro', 'beco', 'caminho', 'municipio', 'lugar', 'distrito', 'condominio', 'edificio', 'predio', 'loteamento', 'sitio', 'kilometro', 'km'];
+  if (FEM.includes(primeira)) return `${prep === 'em' ? 'na' : 'da'} ${t}`;
+  if (MASC.includes(primeira)) return `${prep === 'em' ? 'no' : 'do'} ${t}`;
+  return `${prep} ${t}`;
 }

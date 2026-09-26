@@ -15,11 +15,11 @@ export function contextoPartes(r: Rascunho) {
   return { outorgantes, outorgante: outorgantes[0], procuradores, procurador: procuradores[0], documento: { dataExtenso: '', numero: 'RASCUNHO' }, posto: {} };
 }
 
-export function textoPrevio(r: Rascunho, catalogo: Map<string, PoderCatalogo>, clausulas = false): { html: { t: string; campo: boolean }[] } {
+export function textoPrevio(r: Rascunho, catalogo: Map<string, PoderCatalogo>, clausulas = false): { html: { t: string; campo: boolean; negrito?: boolean }[] } {
   const ctx = contextoPartes(r);
   const textos = paraMotor(r.itens.filter((i) => i.clausula === clausulas), catalogo).map((m) => { try { return renderizarPoder(m, ctx, { preVisualizacao: true }); } catch { return `[${m.versao.nome}]`; } });
   const prosa = clausulas ? textos.join(' ') : comporPoderes(textos, { modo: 'PROSA', separador: '; ', ultimoSeparador: '; e ' }).prosa;
-  return { html: prosa.split(/(⟦[^⟧]+⟧)/g).filter(Boolean).map((t) => ({ t: t.replace(/[⟦⟧]/g, ''), campo: t.startsWith('⟦') })) };
+  return { html: prosa.split(/(⟦[^⟧]+⟧|\*\*[^*]+\*\*)/g).filter(Boolean).map((t) => ({ t: t.replace(/[⟦⟧]|\*\*/g, ''), campo: t.startsWith('⟦'), negrito: t.startsWith('**') })) };
 }
 
 export function EtapaConfiguracao({ r, actualizar, catalogo, editavel, clausulas = false }: { r: Rascunho; actualizar: (fn: (x: Rascunho) => Rascunho) => void; catalogo: PoderCatalogo[]; editavel: boolean; clausulas?: boolean }) {
@@ -57,7 +57,7 @@ export function EtapaConfiguracao({ r, actualizar, catalogo, editavel, clausulas
       <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 80 }}>
         <section className="cartao"><div className="corpo">
           <h2>Texto em tempo real</h2>
-          <p className="texto-juridico" style={{ fontSize: 13, textAlign: 'justify' }}>{!clausulas && '… a quem confere os poderes necessários para '}{previo.html.map((p, k) => (p.campo ? <mark key={k}>[{p.t}]</mark> : <span key={k}>{p.t}</span>))}{!clausulas && '.'}</p>
+          <p className="texto-juridico" style={{ fontSize: 13, textAlign: 'justify' }}>{!clausulas && '… a quem confere poderes necessários de representação para, '}{previo.html.map((p, k) => (p.campo ? <mark key={k}>[{p.t}]</mark> : p.negrito ? <b key={k}>{p.t}</b> : <span key={k}>{p.t}</span>))}{!clausulas && '.'}</p>
           <span className="small muted">Os campos por preencher aparecem destacados. A concordância usa o sexo registado das partes.</span>
         </div></section>
         <section className="cartao"><div className="corpo" style={{ gap: 6 }}>

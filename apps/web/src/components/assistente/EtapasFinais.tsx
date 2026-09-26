@@ -67,6 +67,7 @@ const ROTULO_ACCAO: Record<string, { rotulo: string; classe: string; motivo?: bo
   SUBMETER: { rotulo: 'Submeter para revisão', classe: 'primario', texto: 'A procuração fica bloqueada para edição e segue para validação por outro utilizador.' },
   VALIDAR: { rotulo: 'Validar', classe: 'primario', texto: 'Confirma que o conteúdo foi revisto. Depois de validada pode ser emitida.' },
   EMITIR: { rotulo: 'Emitir procuração', classe: 'primario', texto: 'Atribui o número definitivo e gera o PDF e o DOCX. A partir daqui o conteúdo não pode ser alterado.' },
+  EMITIR_DIRECTO: { rotulo: 'Emitir directamente', classe: 'primario', texto: 'Emite já, sem revisão por outro utilizador (o seu perfil permite-o). Atribui o número definitivo e gera o PDF e o DOCX. A emissão fica registada em seu nome na auditoria e o conteúdo deixa de poder ser alterado.' },
   DEVOLVER: { rotulo: 'Devolver para correcção', classe: '', motivo: true, texto: 'Volta a rascunho para o autor corrigir. Indique o que deve ser corrigido.' },
   CANCELAR: { rotulo: 'Cancelar procuração', classe: '', motivo: true, texto: 'O cancelamento fica registado no histórico e na auditoria. A procuração não é apagada.' },
   ARQUIVAR: { rotulo: 'Arquivar', classe: '', texto: 'Passa ao arquivo. Continua disponível para consulta.' },
@@ -75,12 +76,13 @@ const ROTULO_ACCAO: Record<string, { rotulo: string; classe: string; motivo?: bo
 export function EtapaEmissao({ id, det, v, aoMudar }: { id: string; det: DetalheProcuracao; v?: Verificacao; aoMudar: () => void }) {
   const [conf, setConf] = useState<string | null>(null); const [motivo, setMotivo] = useState(''); const [aExecutar, setA] = useState(false);
   const toast = useToast(); const qc = useQueryClient();
-  const accoes = (v?.accoes ?? []).filter((a) => a !== 'REGISTAR_ASSINATURA');
+  // Com emissão directa disponível, aparece primeiro; submeter/validar continuam possíveis
+  const accoes = (v?.accoes ?? []).filter((a) => a !== 'REGISTAR_ASSINATURA').sort((a, b) => (a === 'EMITIR_DIRECTO' ? -1 : b === 'EMITIR_DIRECTO' ? 1 : 0));
   async function executar() {
     if (!conf) return; setA(true);
     try {
       const r = await api<{ numero?: string }>(`/poas/${id}/transitions`, { body: { accao: conf, motivo: motivo || undefined } });
-      toast(conf === 'EMITIR' ? `Procuração emitida com o número ${r.numero}.` : `${ROTULO_ACCAO[conf].rotulo}: concluído.`);
+      toast(conf === 'EMITIR' || conf === 'EMITIR_DIRECTO' ? `Procuração emitida com o número ${r.numero}.` : `${ROTULO_ACCAO[conf].rotulo}: concluído.`);
       setConf(null); setMotivo(''); qc.invalidateQueries({ queryKey: ['poas'] }); aoMudar();
     } catch (e) { toast(mensagemErro(e), true); } finally { setA(false); }
   }
@@ -92,7 +94,7 @@ export function EtapaEmissao({ id, det, v, aoMudar }: { id: string; det: Detalhe
         {det.estado === 'RASCUNHO' && v && !v.pronta && <div className="aviso atencao">Há pendências na revisão. <Link href={`/procuracoes/${id}?etapa=7`}>Ver revisão</Link></div>}
         {accoes.length === 0 ? <p className="muted" style={{ margin: 0 }}>Não há acções disponíveis para o seu perfil neste estado.</p> : (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {accoes.map((a) => <button key={a} className={`btn ${ROTULO_ACCAO[a]?.classe ?? ''}`} onClick={() => setConf(a)} disabled={a === 'SUBMETER' && !!v && !v.pronta}>{ROTULO_ACCAO[a]?.rotulo ?? a}</button>)}
+            {accoes.map((a) => <button key={a} className={`btn ${a === 'EMITIR_DIRECTO' || accoes[0] === a ? ROTULO_ACCAO[a]?.classe ?? '' : ''}`} onClick={() => setConf(a)} disabled={(a === 'SUBMETER' || a === 'EMITIR_DIRECTO') && !!v && !v.pronta}>{ROTULO_ACCAO[a]?.rotulo ?? a}</button>)}
           </div>
         )}
       </div></section>

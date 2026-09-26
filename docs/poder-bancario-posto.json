@@ -1,0 +1,26 @@
+[
+  {
+    "codigo": "BANC-008",
+    "categoria": "BANCARIOS",
+    "tipo": "PODER",
+    "nome": "Representação bancária completa (texto do posto)",
+    "descricao": "Texto em uso nas procurações bancárias do Consulado (modelo de Setembro de 2026), com o banco como parâmetro.",
+    "texto": "junto da instituição bancária {{banco}}, qualquer das suas dependências, podendo praticar todos os actos necessários e convenientes relativamente à sua conta bancária, nomeadamente solicitar o desbloqueio da conta, a actualização dos dados cadastrais, assinar formulários, declarações e demais documentos, movimentar a conta, solicitar extractos bancários, efectuar transferências nacionais e internacionais, fazer depósitos e levantamentos de quantias monetárias, solicitar, renovar, substituir e cancelar a emissão e o levantamento de cartões de débito e de crédito com os respectivos códigos secretos (PIN), credenciais e códigos de acesso aos serviços bancários digitais, assinatura e quaisquer outros elementos de identificação, e negociar e resolver quaisquer questões administrativas relacionadas com a conta, bem como assinar todos e quaisquer formulários que se julguem necessários para movimentar a conta bancária, podendo para o efeito promover, requerer, declarar, praticar, reclamar, conferir e assinar tudo quanto necessário for para o fiel e cabal cumprimento do presente mandato",
+    "campos": [
+      {
+        "chave": "banco",
+        "rotulo": "Instituição bancária",
+        "tipo": "ENTIDADE",
+        "obrigatorio": true
+      }
+    ],
+    "regras": [],
+    "exclusivo": false,
+    "tiposPermitidos": [
+      "BANCARIA",
+      "ESPECIAL",
+      "GERAL"
+    ],
+    "publicar": false
+  }
+]

@@ -59,7 +59,13 @@ test.describe.serial('Ciclo completo no browser', () => {
 
     // Etapa 5: campos dinâmicos com validação imediata
     // o primeiro poder com campos já vem aberto
-    await page.getByLabel(/^Banco/).selectOption({ label: 'Banco Demo Alfa, S.A.' });
+    // banco que ainda não existe: acrescentado sem sair da procuração
+    await page.getByRole('combobox', { name: 'Banco' }).fill('Banco Novo de Teste, S.A.');
+    await page.getByRole('button', { name: /Acrescentar «Banco Novo de Teste, S.A.»/ }).click();
+    const modal = page.getByRole('dialog', { name: 'Nova entidade' });
+    await modal.getByLabel(/^Sigla/).fill('bnt');
+    await modal.getByRole('button', { name: 'Acrescentar e usar' }).click();
+    await expect(page.getByText('BNT – Banco Novo de Teste, S.A.')).toBeVisible();
     await page.getByRole('button', { name: /Movimentação de conta bancária/ }).click();
     await page.getByLabel(/^IBAN/).fill('AO06004400006729503110102');
     await expect(page.getByText('IBAN inválido.')).toBeVisible();
@@ -68,7 +74,7 @@ test.describe.serial('Ciclo completo no browser', () => {
     for (const o of ['movimentar e actualizar a conta', 'fazer depósitos', 'fazer levantamentos']) await page.getByLabel(o).check();
     await page.getByLabel(/^Limite por operação/).fill('1500000');
     await expect(page.getByText('Kz 1.500.000,00 (um milhão e quinhentos mil kwanzas)').first()).toBeVisible();
-    await expect(page.locator('.texto-juridico').first()).toContainText('representar a outorgante junto do Banco Demo Alfa, S.A.');
+    await expect(page.locator('.texto-juridico').first()).toContainText('representar a outorgante junto do BNT – BANCO NOVO DE TESTE, S.A.');
     await guardado(page);
     await foto(page, '05-configuracao');
     await seguinte(page, 'Cláusulas');

@@ -1,12 +1,14 @@
 /** Máquina de estados da procuração. Transições explícitas + permissão exigida. */
 export type Estado = 'RASCUNHO' | 'EM_REVISAO' | 'VALIDADA' | 'EMITIDA' | 'ASSINADA' | 'CANCELADA' | 'ARQUIVADA';
-export type Accao = 'SUBMETER' | 'DEVOLVER' | 'VALIDAR' | 'EMITIR' | 'REGISTAR_ASSINATURA' | 'CANCELAR' | 'ARQUIVAR';
+export type Accao = 'SUBMETER' | 'DEVOLVER' | 'VALIDAR' | 'EMITIR' | 'EMITIR_DIRECTO' | 'REGISTAR_ASSINATURA' | 'CANCELAR' | 'ARQUIVAR';
 
 export const TRANSICOES: Record<Accao, { de: Estado[]; para: Estado; permissao: string; exigeMotivo?: boolean }> = {
   SUBMETER: { de: ['RASCUNHO'], para: 'EM_REVISAO', permissao: 'poa.submit' },
   DEVOLVER: { de: ['EM_REVISAO', 'VALIDADA'], para: 'RASCUNHO', permissao: 'poa.validate', exigeMotivo: true },
   VALIDAR: { de: ['EM_REVISAO'], para: 'VALIDADA', permissao: 'poa.validate' },
   EMITIR: { de: ['VALIDADA'], para: 'EMITIDA', permissao: 'poa.issue' },
+  /** Emissão directa: quem tem esta permissão faz o documento completo sem passar por revisão de terceiros. */
+  EMITIR_DIRECTO: { de: ['RASCUNHO', 'EM_REVISAO', 'VALIDADA'], para: 'EMITIDA', permissao: 'poa.issue_direct' },
   REGISTAR_ASSINATURA: { de: ['EMITIDA'], para: 'ASSINADA', permissao: 'poa.issue' },
   CANCELAR: { de: ['RASCUNHO', 'EM_REVISAO', 'VALIDADA', 'EMITIDA', 'ASSINADA'], para: 'CANCELADA', permissao: 'poa.cancel', exigeMotivo: true },
   ARQUIVAR: { de: ['ASSINADA', 'CANCELADA'], para: 'ARQUIVADA', permissao: 'poa.archive' },

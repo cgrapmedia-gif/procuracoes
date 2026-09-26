@@ -3,7 +3,7 @@
  */
 import { dataCurta } from './extenso';
 import { EstadoCivil, Sexo, concordar, estadoCivilTexto, juntarLista } from './genero';
-import { Morada, formatarCampo } from './campos';
+import { Morada, contracao, formatarMorada } from './campos';
 
 export interface DocumentoIdentificacao {
   tipo: string;                 // código de IdentityDocumentType (BI_AO, PASSAPORTE_AO, CC_PT, TR_PT…)
@@ -84,17 +84,17 @@ export function contextoPessoa(p: Pessoa, tipos: TipoDocumentoIdentificacao[] = 
   const ec = p.estadoCivil ? estadoCivilTexto(p.estadoCivil, p.sexo) : '';
   const conj = p.estadoCivil === 'CASADO' && p.conjuge ? ` com ${p.conjuge}${p.regimeBens ? `, no regime de ${p.regimeBens}` : ''}` : '';
   const docTxt = documentoTexto(p.documento, tipos);
-  const morada = p.morada ? formatarCampo({ chave: 'm', rotulo: 'Morada', tipo: 'MORADA', obrigatorio: false }, p.morada) : '';
+  const morada = p.morada?.linha ? formatarMorada(p.morada) : '';
   const portador = concordar(p, { ms: 'portador', fs: 'portadora' });
   const partes = [
     `**${p.nomeCompleto.toLocaleUpperCase('pt')}**`,
     ec && `${ec}${conj}`,
     p.profissao,
     `de nacionalidade ${p.nacionalidade}`,
-    p.naturalidade && `${concordar(p, { ms: 'natural', fs: 'natural' })} de ${p.naturalidade}`,
+    p.naturalidade && `natural ${contracao(p.naturalidade, 'de')}`,
     `${portador} do ${docTxt}`,
     p.nif && `NIF ${p.nif}`,
-    morada && `residente habitualmente em ${morada}`,
+    morada && `residente habitualmente ${contracao(morada, 'em')}`,
   ].filter(Boolean);
   const qualidadeTexto = qualidade?.tipo === 'REPRESENTANTE' ? `que outorga na qualidade de ${qualidade.texto}` : undefined;
   if (qualidadeTexto) partes.push(qualidadeTexto);

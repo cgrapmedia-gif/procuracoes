@@ -150,6 +150,33 @@ export class PowersService {
     return { powerId, versaoId: versionId, versao: v.versionNo };
   }
 
+  /** Publicação em lote: publica o rascunho pendente de cada poder indicado (ignora os que não têm rascunho). */
+  async publicarLote(ids: string[], u: Utilizador) {
+    return this.db.transaction(async (tx) => {
+      const publicados: string[] = []; const ignorados: string[] = [];
+      for (const id of ids) {
+        const [ult] = await tx.select().from(powerVersions).where(and(eq(powerVersions.powerId, id), eq(powerVersions.status, 'RASCUNHO'))).orderBy(desc(powerVersions.versionNo)).limit(1);
+        if (!ult) { ignorados.push(id); continue; }
+        await this.publicarVersao(tx, id, ult.id, u);
+        publicados.push(id);
+      }
+      await this.audit.log(tx, u, 'PODERES_PUBLICAR_LOTE', 'power', null, { publicados: publicados.length, ignorados: ignorados.length });
+      return { publicados: publicados.length, ignorados: ignorados.length };
+    });
+  }
+
+  /** Exporta o catálogo (última versão de cada poder) no formato de importação — cópia de segurança ou edição em massa. */
+  async exportar() {
+    const rows = await this.db.select({ p: powers, cat: powerCategories.code }).from(powers).innerJoin(powerCategories, eq(powerCategories.id, powers.categoryId)).orderBy(asc(powerCategories.sort), asc(powers.sort));
+    const out = [];
+    for (const r of rows) {
+      const [v] = await this.db.select().from(powerVersions).where(eq(powerVersions.powerId, r.p.id)).orderBy(desc(powerVersions.versionNo)).limit(1);
+      if (!v) continue;
+      out.push({ codigo: r.p.code, categoria: r.cat, tipo: r.p.kind, nome: r.p.name, descricao: r.p.description ?? undefined, texto: v.text, textoAlternativo: v.altText ?? undefined, campos: v.fields, regras: v.rules, exclusivo: v.exclusive, tiposPermitidos: v.allowedTypes, publicar: v.status === 'PUBLICADA', activo: r.p.active, versao: v.versionNo });
+    }
+    return out;
+  }
+
   async definirActivo(id: string, activo: boolean, u: Utilizador) {
     return this.db.transaction(async (tx) => {
       const [p] = await tx.update(powers).set({ active: activo, updatedAt: new Date() }).where(eq(powers.id, id)).returning();

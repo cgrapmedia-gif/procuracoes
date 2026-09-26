@@ -16,7 +16,7 @@ import { AuditService } from '../../common/audit.service';
 import { CryptoService } from '../../common/crypto.service';
 import { hashPassword } from '../../auth/auth.service';
 import { criarPool, urlDirecta } from '../conexao';
-import { CATEGORIAS } from './poderes-demo';
+import { TODAS_CATEGORIAS as CATEGORIAS } from './poderes-demo';
 import { modeloConsular } from './modelo-consular';
 import { PERFIS, PERMISSOES, TIPOS_POA } from './seed';
 import type { Db } from '../db.module';

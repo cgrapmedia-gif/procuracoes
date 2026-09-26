@@ -143,3 +143,11 @@ describe('interpretador de templates (sem eval)', () => {
     finally { (globalThis as { Function: unknown }).Function = original; }
   });
 });
+
+describe('emissão directa', () => {
+  it('só com poa.issue_direct; parte do rascunho', () => {
+    expect(transitar('RASCUNHO', 'EMITIR_DIRECTO', { permissoes: new Set(['poa.issue_direct']), criadorId: 'u', actorId: 'u' })).toBe('EMITIDA');
+    expect(() => transitar('RASCUNHO', 'EMITIR_DIRECTO', { permissoes: new Set(['poa.issue', 'poa.validate']) })).toThrow();
+    expect(() => transitar('EMITIDA', 'EMITIR_DIRECTO', { permissoes: new Set(['poa.issue_direct']) })).toThrow();
+  });
+});

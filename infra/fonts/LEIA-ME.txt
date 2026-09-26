@@ -1,1 +1,4 @@
-Colocar aqui os ficheiros Merriweather-*.ttf (licença SIL OFL) — https://fonts.google.com/specimen/Merriweather
+Tipos de letra do modelo do posto, instalados na imagem Docker da API (para o PDF sair igual ao Word):
+ - Merriweather (corpo do documento)      — SIL Open Font License 1.1 (OFL-Merriweather.txt)
+ - Pragati Narrow ("REPÚBLICA DE ANGOLA") — SIL Open Font License 1.1 (OFL-PragatiNarrow.txt)
+Fonte: https://github.com/google/fonts (ofl/merriweather, ofl/pragatinarrow). Redistribuição permitida pela OFL.

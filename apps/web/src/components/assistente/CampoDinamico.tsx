@@ -1,9 +1,11 @@
 'use client';
-import { useQuery } from '@tanstack/react-query';
 import { DefinicaoCampo, Imovel, Morada, RefEntidade, ValorCampo, Veiculo, Empresa, formatarIban, moedaCompleta, validarCampo } from '@proc/core/browser';
-import { api } from '@/lib/api';
 import { SeletorPessoa } from '../SeletorPessoa';
+import { SeletorEntidade } from '../SeletorEntidade';
+import { PessoaGaveta } from '../PessoaForm';
+import { useState } from 'react';
 import { Campo } from '../ui';
+import { Icone } from '../Icone';
 
 const TIPO_ENTRADA: Partial<Record<DefinicaoCampo['tipo'], string>> = { DATA: 'date', DATA_VALIDADE: 'date', EMAIL: 'email', TELEFONE: 'tel', NUMERO: 'number', MOEDA: 'number' };
 const TIPO_ENTIDADE: Record<string, string> = { banco: 'BANCO', conservatoria: 'CONSERVATORIA', tribunal: 'TRIBUNAL', instituto: 'SEGURANCA_SOCIAL', administracao: 'ADMIN_TRIBUTARIA', operadora: 'OPERADORA', seguradora: 'SEGURADORA' };
@@ -21,7 +23,6 @@ export function CampoDinamico({ def, valor, mudar, dataActo, desactivado }: { de
   const erros = valor === undefined ? [] : validarCampo(def, valor, { dataActo });
   const erro = erros[0]?.replace(`${def.rotulo}: `, '');
   const tipoEnt = TIPO_ENTIDADE[def.chave] ?? '';
-  const entidades = useQuery({ queryKey: ['entities', tipoEnt], queryFn: () => api<{ id: string; name: string }[]>(`/entities${tipoEnt ? `?tipo=${tipoEnt}` : ''}`), enabled: def.tipo === 'ENTIDADE' });
   const props = { rotulo: def.rotulo, obrigatorio: def.obrigatorio, opcional: !def.obrigatorio, erro, ajuda: def.ajuda };
   const s = typeof valor === 'string' || typeof valor === 'number' ? String(valor) : '';
   switch (def.tipo) {
@@ -41,12 +42,9 @@ export function CampoDinamico({ def, valor, mudar, dataActo, desactivado }: { de
     case 'CHECKBOX': return <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" disabled={desactivado} checked={!!valor} onChange={(e) => mudar(e.target.checked)} />{def.rotulo}</label>;
     case 'ENTIDADE': {
       const v = valor as RefEntidade | undefined;
-      return <Campo {...props} ajuda={def.ajuda ?? 'Entidades registadas no catálogo institucional.'}><select className="entrada" disabled={desactivado} value={v?.id ?? ''} onChange={(e) => { const x = entidades.data?.find((y) => y.id === e.target.value); mudar(x ? { id: x.id, nome: x.name } : undefined); }}><option value="">Escolher…</option>{entidades.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Campo>;
+      return <Campo {...props} ajuda={def.ajuda ?? 'Se não estiver na lista, acrescente-a sem sair da procuração.'}><SeletorEntidade tipo={tipoEnt} rotulo={def.rotulo} valor={v} desactivado={desactivado} mudar={(x) => mudar(x)} /></Campo>;
     }
-    case 'PESSOA': {
-      const v = valor as RefEntidade | undefined;
-      return <Campo {...props}>{v?.id ? <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><b style={{ fontWeight: 500 }}>{v.nome}</b>{!desactivado && <button type="button" className="btn pequeno" onClick={() => mudar(undefined)}>Trocar</button>}</span> : <SeletorPessoa aoEscolher={(p) => mudar({ id: p.id, nome: p.nomeCompleto })} />}</Campo>;
-    }
+    case 'PESSOA': return <CampoPessoa def={def} valor={valor as RefEntidade | undefined} mudar={mudar} desactivado={desactivado} props={props} />;
     case 'MORADA': return <div className="campo"><span>{def.rotulo}</span><Sub campos={[['linha', 'Morada', true], ['codigoPostal', 'Código postal'], ['localidade', 'Localidade'], ['pais', 'País']]} valor={(valor as unknown as Record<string, string>) ?? {}} mudar={(v) => mudar(v as unknown as Morada)} /></div>;
     case 'IMOVEL': return <div className="campo"><span>{def.rotulo}{def.obrigatorio && <span className="obrig"> *</span>}</span><Sub campos={[['tipo', 'Tipo (ex.: prédio urbano)'], ['morada', 'Localização', true], ['freguesia', 'Freguesia'], ['concelho', 'Concelho'], ['artigoMatricial', 'Artigo matricial'], ['conservatoria', 'Conservatória'], ['descricaoPredial', 'Descrição predial n.º']]} valor={(valor as unknown as Record<string, string>) ?? {}} mudar={(v) => mudar(v as unknown as Imovel)} />{erro && <span className="erro">{erro}</span>}</div>;
     case 'VEICULO': return <div className="campo"><span>{def.rotulo}</span><Sub campos={[['marca', 'Marca', true], ['modelo', 'Modelo'], ['matricula', 'Matrícula', true], ['quadro', 'N.º de quadro']]} valor={(valor as unknown as Record<string, string>) ?? {}} mudar={(v) => mudar(v as unknown as Veiculo)} />{erro && <span className="erro">{erro}</span>}</div>;
@@ -57,4 +55,17 @@ export function CampoDinamico({ def, valor, mudar, dataActo, desactivado }: { de
         onChange={(e) => mudar(e.target.value === '' ? undefined : def.tipo === 'NUMERO' || def.tipo === 'MOEDA' ? Number(e.target.value) : e.target.value)} /></Campo>;
     }
   }
+}
+
+/** Campo PESSOA (ex.: menor): pesquisa de pessoas existentes ou registo de uma nova, sem sair da procuração. */
+function CampoPessoa({ def, valor, mudar, desactivado, props }: { def: DefinicaoCampo; valor?: RefEntidade; mudar: (v: ValorCampo) => void; desactivado?: boolean; props: { rotulo: string; obrigatorio: boolean; opcional: boolean; erro?: string; ajuda?: string } }) {
+  const [gaveta, setGaveta] = useState(false);
+  return (
+    <Campo {...props}>
+      {valor?.id
+        ? <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><b style={{ fontWeight: 500 }}>{valor.nome}</b>{!desactivado && <button type="button" className="btn pequeno" onClick={() => mudar(undefined)}>Trocar</button>}</span>
+        : <span style={{ display: 'flex', gap: 8 }}><span style={{ flex: 1 }}><SeletorPessoa rotulo={`Pesquisar ${def.rotulo.toLowerCase()}`} aoEscolher={(p) => mudar({ id: p.id, nome: p.nomeCompleto })} /></span>{!desactivado && <button type="button" className="btn" style={{ height: 44 }} onClick={() => setGaveta(true)}><Icone n="mais" t={15} />Nova pessoa</button>}</span>}
+      <PessoaGaveta aberta={gaveta} fechar={() => setGaveta(false)} aoGuardar={(p) => mudar({ id: p.id, nome: p.nomeCompleto })} />
+    </Campo>
+  );
 }

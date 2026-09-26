@@ -108,11 +108,25 @@ describe('Centro de Poderes', () => {
     expect(operador.body.total).toBe(0); // rascunhos nunca chegam ao construtor
     const gestao = await request(app.getHttpServer()).get('/api/v1/powers').query({ q: 'JS-00', rascunhos: 'so' }).set(auth('admin')).expect(200);
     expect(gestao.body.itens.map((x: { codigo: string; publicado: boolean }) => [x.codigo, x.publicado]).sort()).toEqual([['JS-001', false], ['JS-002', false]]);
+    const lote = await request(app.getHttpServer()).post('/api/v1/powers/publish-batch').set(auth('admin')).send({ ids: gestao.body.itens.map((x: { id: string }) => x.id) }).expect(201);
+    expect(lote.body).toEqual({ publicados: 2, ignorados: 0 });
+    const exp = await request(app.getHttpServer()).get('/api/v1/powers/export').set(auth('admin')).expect(200);
+    expect(exp.body.find((x: { codigo: string }) => x.codigo === 'JS-001')).toMatchObject({ publicar: true, versao: 1 });
   });
   it('importação por ficheiro CSV (separador ;)', async () => {
     const csv = 'codigo;categoria;nome;texto\nCSV-001;OUTROS;Via CSV;praticar actos de teste';
     const p = await request(app.getHttpServer()).post('/api/v1/powers/import/preview').set(auth('admin')).attach('ficheiro', Buffer.from(csv), 'poderes.csv').expect(201);
     expect(p.body.novos).toBe(1);
+  });
+});
+
+describe('Entidades durante a redacção', () => {
+  it('operador acrescenta um banco; repetir devolve o existente; consulta não pode', async () => {
+    const novo = await request(app.getHttpServer()).post('/api/v1/entities').set(auth('operador')).send({ tipo: 'BANCO', nome: 'Banco Exemplo de Teste, S.A.', sigla: 'BET' }).expect(201);
+    expect(novo.body).toMatchObject({ name: 'Banco Exemplo de Teste, S.A.', shortName: 'BET', existente: false });
+    const dup = await request(app.getHttpServer()).post('/api/v1/entities').set(auth('operador')).send({ tipo: 'BANCO', nome: '  banco exemplo de TESTE, s.a. ' }).expect(201);
+    expect(dup.body).toMatchObject({ id: novo.body.id, existente: true });
+    await request(app.getHttpServer()).post('/api/v1/entities').set(auth('consulta')).send({ tipo: 'BANCO', nome: 'Outro Banco' }).expect(403);
   });
 });
 
@@ -137,13 +151,13 @@ describe('Ciclo de vida completo da procuração', () => {
   let poaId: string; let lock: number; let numero: string;
   const pessoa = async (q: string) => (await request(app.getHttpServer()).get('/api/v1/persons').query({ q }).set(auth('operador'))).body[0].id as string;
   const versao = async (codigo: string) => (await request(app.getHttpServer()).get('/api/v1/powers').query({ q: codigo }).set(auth('operador'))).body.itens.find((x: { codigo: string }) => x.codigo === codigo).versaoId as string;
-  const entidade = async (nome: string) => { const r = await request(app.getHttpServer()).get('/api/v1/entities').set(auth('operador')); const e = r.body.find((x: { name: string }) => x.name === nome); return { id: e.id, nome: e.name }; };
+  const entidade = async (nome: string) => { const r = await request(app.getHttpServer()).get('/api/v1/entities').set(auth('operador')); const e = r.body.find((x: { name: string }) => x.name === nome); return { id: e.id, nome: e.name, sigla: e.shortName }; };
 
   it('cria rascunho e recebe sugestões do tipo', async () => {
     const r = await request(app.getHttpServer()).post('/api/v1/poas').set(auth('operador')).send({ tipoCodigo: 'BANCARIA', dataActo: '2026-09-24', local: 'Porto', oficianteId: (await request(app.getHttpServer()).get('/api/v1/officers').set(auth('operador'))).body[0].id }).expect(201);
     poaId = r.body.id;
     const c = await request(app.getHttpServer()).get(`/api/v1/poas/${poaId}/check`).set(auth('operador')).expect(200);
-    expect(c.body.sugestoes.map((x: { codigo: string }) => x.codigo)).toEqual(['BANC-001', 'BANC-002', 'BANC-007']);
+    expect(c.body.sugestoes.map((x: { codigo: string }) => x.codigo)).toEqual(['BANC-008']);
     expect(c.body.pronta).toBe(false);
     lock = (await request(app.getHttpServer()).get(`/api/v1/poas/${poaId}`).set(auth('operador'))).body.lockVersion;
   });
@@ -198,6 +212,9 @@ describe('Ciclo de vida completo da procuração', () => {
     expect(r.text).toContain('que deverão actuar sempre conjuntamente');
     expect(r.text).toContain('Kz 1.500.000,00 (um milhão e quinhentos mil kwanzas)');
     expect(r.text).toContain('RASCUNHO · DEMO — SEM VALOR JURÍDICO');
+    expect(r.text).toContain('a quem confere poderes necessários de representação para');
+    expect(r.text).toContain('<strong>BDA – BANCO DEMO ALFA, S.A.</strong>');
+    expect(r.text).toContain('class="mold esq"');
     writeFileSync('/tmp/preview.html', r.text);
   });
 
@@ -265,12 +282,28 @@ describe('Ciclo de vida completo da procuração', () => {
     }
   });
 
+  it('emissão directa: quem tem a permissão faz o documento completo; operador não pode', async () => {
+    const ofi = (await request(app.getHttpServer()).get('/api/v1/officers').set(auth('admin'))).body[0].id;
+    const c = await request(app.getHttpServer()).post('/api/v1/poas').set(auth('admin')).send({ tipoCodigo: 'ESPECIAL', dataActo: '2026-09-24', local: 'Porto', oficianteId: ofi }).expect(201);
+    const d = (await request(app.getHttpServer()).get(`/api/v1/poas/${c.body.id}`).set(auth('admin'))).body;
+    await request(app.getHttpServer()).put(`/api/v1/poas/${c.body.id}`).set(auth('admin')).send({
+      lockVersion: d.lockVersion, dataActo: '2026-09-24', local: 'Porto', oficianteId: ofi, formaActuacao: 'ISOLADAMENTE',
+      outorgantes: [{ pessoaId: await pessoa('Carlos') }], procuradores: [{ pessoaId: await pessoa('Gaspar') }],
+      poderes: [{ versaoId: await versao('ADM-003'), valores: {} }],
+    }).expect(200);
+    await request(app.getHttpServer()).post(`/api/v1/poas/${c.body.id}/transitions`).set(auth('operador')).send({ accao: 'EMITIR_DIRECTO' }).expect(403);
+    const e = await request(app.getHttpServer()).post(`/api/v1/poas/${c.body.id}/transitions`).set(auth('admin')).send({ accao: 'EMITIR_DIRECTO' }).expect(201);
+    expect(e.body.numero).toMatch(/^PROC-\d{4}-\d{6}$/);
+    const h = (await request(app.getHttpServer()).get(`/api/v1/poas/${c.body.id}`).set(auth('admin'))).body.historico.map((x: { action: string }) => x.action);
+    expect(h).toEqual(['CRIAR', 'EMITIR_DIRECTO']);
+  });
+
   it('auditoria íntegra e dashboard', async () => {
     const v = await request(app.getHttpServer()).get('/api/v1/audit/verify').set(auth('admin')).expect(200);
     expect(v.body.integra).toBe(true);
     const dsh = await request(app.getHttpServer()).get('/api/v1/dashboard').set(auth('consulta')).expect(200);
     expect(dsh.body.totais.total).toBeGreaterThanOrEqual(2);
-    expect(dsh.body.topPoderes[0].total).toBe(1);
+    expect(dsh.body.topPoderes[0].total).toBeGreaterThanOrEqual(1);
   });
 
   it('exportação CSV protegida contra injecção de fórmulas', async () => {
