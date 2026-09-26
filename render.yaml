@@ -1,103 +1,44 @@
-
-# Render Blueprint — API da Plataforma de Procurações
-# AMBIENTE: desenvolvimento / testes
+# Render Blueprint — API da Plataforma de Procurações (AMBIENTE DE TESTE, plano gratuito).
+# Render → New → Blueprint → escolher este repositório. Os valores "sync: false" são pedidos no ecrã.
 #
-# Este ficheiro NÃO substitui o render.yaml de produção.
-# Para produção continua a utilizar-se o render.yaml com plan: standard.
-
+# Limites do plano gratuito (aceitáveis para testes, NÃO para produção):
+#  - 512 MB de RAM: a geração de PDF (Chromium) pode falhar por falta de memória;
+#  - adormece após 15 min sem uso: o primeiro pedido seguinte demora ~1 min;
+#  - sem "pre-deploy": as migrações correm no arranque (dockerCommand);
+#  - disco temporário: com STORAGE_DRIVER=local os PDF emitidos perdem-se quando o serviço reinicia.
 services:
   - type: web
-    name: procuracoes-api-dev
+    name: procuracoes-api-teste
     runtime: docker
     region: frankfurt
     plan: free
-
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-
+    dockerCommand: sh -c "node dist/db/migrate.js && node dist/main.js"
     healthCheckPath: /api/v1/health
-
-    # Executa as migrations antes do deploy.
-    preDeployCommand: node dist/db/migrate.js
-
-    # Deploy automático quando houver alterações na branch de desenvolvimento.
     autoDeploy: true
-
     envVars:
       - key: NODE_ENV
-        value: development
-
-      # Neon - utilizar a branch de desenvolvimento, NÃO production.
-      - key: DATABASE_URL
+        value: production
+      - key: NODE_OPTIONS          # limita a memória do Node para sobrar espaço ao Chromium
+        value: --max-old-space-size=256
+      - key: DATABASE_URL          # Neon (branch de teste), POOLED, role neondb_owner (sem aspas)
         sync: false
-
-      - key: DATABASE_URL_DIRECT
+      - key: DATABASE_URL_DIRECT   # Neon (mesmo branch), DIRECT, role neondb_owner (sem aspas)
         sync: false
-
       - key: DB_POOL_MAX
         value: "5"
-
       - key: DB_CONNECT_TIMEOUT_MS
-        value: "15000"
-
-      # O Render gera automaticamente esta chave.
+        value: "20000"
       - key: JWT_SECRET
         generateValue: true
-
       - key: JWT_TTL_SECONDS
         value: "900"
-
       - key: REFRESH_TTL_DAYS
         value: "7"
-
-      # Chaves de encriptação específicas do ambiente DEV.
-      - key: DATA_ENC_KEY
+      - key: DATA_ENC_KEY          # openssl rand -base64 32
         sync: false
-
-      - key: DATA_BIDX_KEY
+      - key: DATA_BIDX_KEY         # openssl rand -base64 48
         sync: false
-
-      # Chave específica do ambiente DEV.
-      # NÃO reutilizar a PROXY_SECRET da produção.
-      - key: PROXY_SECRET
+      - key: PROXY_SECRET          # openssl rand -hex 32  (o MESMO valor na Vercel)
         sync: false
-
-      - key: TRUST_PROXY_HOPS
-        value: "2"
-
-      # URL do frontend de desenvolvimento.
-      - key: CORS_ORIGIN
-        sync: false
-
-      # Cloudflare R2
-      - key: STORAGE_DRIVER
-        value: s3
-
-      - key: S3_ENDPOINT
-        sync: false
-
-      - key: S3_REGION
-        value: auto
-
-      # Bucket utilizado pelo ambiente de desenvolvimento.
-      - key: S3_BUCKET
-        value: procuracoes-documentos
-
-      - key: S3_ACCESS_KEY
-        sync: false
-
-      - key: S3_SECRET_KEY
-        sync: false
-
-      - key: S3_SSE
-        value: none
-
-      - key: S3_CONDITIONAL_WRITES
-        value: "false"
-
-      - key: CHROMIUM_PATH
-        value: /usr/bin/chromium
-
-      - key: SEGREGACAO_FUNCOES
-        value: "true"
-
