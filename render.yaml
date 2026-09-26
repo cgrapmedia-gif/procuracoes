@@ -14,7 +14,6 @@ services:
     plan: free
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-    dockerCommand: sh -c "node dist/db/migrate.js && node dist/main.js"
     healthCheckPath: /api/v1/health
     autoDeploy: true
     envVars:
