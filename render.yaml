@@ -1,60 +1,103 @@
-# Render Blueprint — API da Plataforma de Procurações.
-# Render → New → Blueprint → escolher este repositório. Os valores marcados "sync: false" são pedidos no ecrã.
+
+# Render Blueprint — API da Plataforma de Procurações
+# AMBIENTE: desenvolvimento / testes
+#
+# Este ficheiro NÃO substitui o render.yaml de produção.
+# Para produção continua a utilizar-se o render.yaml com plan: standard.
+
 services:
   - type: web
-    name: procuracoes-api
+    name: procuracoes-api-dev
     runtime: docker
     region: frankfurt
-    plan: standard            # 2 GB RAM: necessário para o Chromium que gera os PDF
+    plan: free
+
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
+
     healthCheckPath: /api/v1/health
+
+    # Executa as migrations antes do deploy.
     preDeployCommand: node dist/db/migrate.js
+
+    # Deploy automático quando houver alterações na branch de desenvolvimento.
     autoDeploy: true
+
     envVars:
       - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL          # Neon, branch main, POOLED, role procuracoes_app (sem aspas)
+        value: development
+
+      # Neon - utilizar a branch de desenvolvimento, NÃO production.
+      - key: DATABASE_URL
         sync: false
-      - key: DATABASE_URL_DIRECT   # Neon, branch main, DIRECT, role neondb_owner (sem aspas)
+
+      - key: DATABASE_URL_DIRECT
         sync: false
+
       - key: DB_POOL_MAX
-        value: "10"
+        value: "5"
+
       - key: DB_CONNECT_TIMEOUT_MS
         value: "15000"
+
+      # O Render gera automaticamente esta chave.
       - key: JWT_SECRET
         generateValue: true
+
       - key: JWT_TTL_SECONDS
         value: "900"
+
       - key: REFRESH_TTL_DAYS
         value: "7"
-      - key: DATA_ENC_KEY          # openssl rand -base64 32  (guardar em cofre!)
+
+      # Chaves de encriptação específicas do ambiente DEV.
+      - key: DATA_ENC_KEY
         sync: false
-      - key: DATA_BIDX_KEY         # openssl rand -base64 48
+
+      - key: DATA_BIDX_KEY
         sync: false
-      - key: PROXY_SECRET          # openssl rand -hex 32  (o MESMO valor na Vercel)
+
+      # Chave específica do ambiente DEV.
+      # NÃO reutilizar a PROXY_SECRET da produção.
+      - key: PROXY_SECRET
         sync: false
-      - key: TRUST_PROXY_HOPS      # Vercel → Render → API
+
+      - key: TRUST_PROXY_HOPS
         value: "2"
-      - key: CORS_ORIGIN           # https://<domínio da aplicação na Vercel>
+
+      # URL do frontend de desenvolvimento.
+      - key: CORS_ORIGIN
         sync: false
+
+      # Cloudflare R2
       - key: STORAGE_DRIVER
         value: s3
-      - key: S3_ENDPOINT           # https://<account-id>.eu.r2.cloudflarestorage.com
+
+      - key: S3_ENDPOINT
         sync: false
+
       - key: S3_REGION
         value: auto
+
+      # Bucket utilizado pelo ambiente de desenvolvimento.
       - key: S3_BUCKET
         value: procuracoes-documentos
+
       - key: S3_ACCESS_KEY
         sync: false
+
       - key: S3_SECRET_KEY
         sync: false
+
       - key: S3_SSE
         value: none
+
       - key: S3_CONDITIONAL_WRITES
         value: "false"
+
       - key: CHROMIUM_PATH
         value: /usr/bin/chromium
+
       - key: SEGREGACAO_FUNCOES
         value: "true"
+
