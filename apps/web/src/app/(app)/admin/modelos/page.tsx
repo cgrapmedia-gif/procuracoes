@@ -188,6 +188,8 @@ export default function Modelos() {
                   </div>}
                 </Seccao>
                 <DadosPosto />
+                <TiposDocumento />
+                <Numeracao />
               </fieldset>
               {editavel && (
                 <div className="cartao"><div className="corpo">
@@ -218,12 +220,12 @@ function DadosPosto() {
   const posto = useQuery({ queryKey: ['organization'], queryFn: () => api<Posto>('/organization') });
   const ofs = useQuery({ queryKey: ['officers', 'todos'], queryFn: () => api<Oficiante[]>('/officers?todos=true') });
   const [p, setP] = useState<Posto | null>(null);
-  const [novo, setNovo] = useState<{ aberta: boolean; nome: string; cargo: string }>({ aberta: false, nome: '', cargo: 'Vice-cônsul' });
+  const [novo, setNovo] = useState<{ aberta: boolean; nome: string; cargo: string; id?: string }>({ aberta: false, nome: '', cargo: 'Vice-cônsul' });
   useEffect(() => { if (posto.data) setP(posto.data); }, [posto.data]);
   const gerir = pode('catalog.manage');
   async function gravar() { try { await api('/organization', { method: 'PUT', body: p }); toast('Dados do posto actualizados.'); qc.invalidateQueries({ queryKey: ['organization'] }); } catch (e) { toast(mensagemErro(e), true); } }
   async function oficiante(o: Oficiante, patch: Partial<Oficiante>) { try { await api(`/officers/${o.id}`, { method: 'PUT', body: patch }); qc.invalidateQueries({ queryKey: ['officers'] }); } catch (e) { toast(mensagemErro(e), true); } }
-  async function criarOficiante() { try { await api('/officers', { body: { nome: novo.nome, cargo: novo.cargo } }); setNovo({ aberta: false, nome: '', cargo: 'Vice-cônsul' }); qc.invalidateQueries({ queryKey: ['officers'] }); } catch (e) { toast(mensagemErro(e), true); } }
+  async function criarOficiante() { try { if (novo.id) await api(`/officers/${novo.id}`, { method: 'PUT', body: { nome: novo.nome, cargo: novo.cargo } }); else await api('/officers', { body: { nome: novo.nome, cargo: novo.cargo } }); setNovo({ aberta: false, nome: '', cargo: 'Vice-cônsul' }); qc.invalidateQueries({ queryKey: ['officers'] }); toast('Oficiante guardado.'); } catch (e) { toast(mensagemErro(e), true); } }
   if (!p) return null;
   return (
     <Seccao titulo="Dados do posto e oficiantes">
@@ -237,15 +239,63 @@ function DadosPosto() {
         {ofs.data?.map((o) => (
           <div key={o.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, opacity: o.activo ? 1 : 0.55 }}>
             <span style={{ flex: 1 }}><b style={{ fontWeight: 600 }}>{o.nome}</b>, {o.cargo}</span>
+            {gerir && <button className="btn pequeno fantasma" onClick={() => setNovo({ aberta: true, id: o.id, nome: o.nome, cargo: o.cargo })}>Editar</button>}
             {gerir && <button className="btn pequeno" onClick={() => oficiante(o, { activo: !o.activo })}>{o.activo ? 'Desactivar' : 'Activar'}</button>}
           </div>
         ))}
         {gerir && <button className="btn pequeno" style={{ alignSelf: 'flex-start' }} onClick={() => setNovo({ ...novo, aberta: true })}><Icone n="mais" t={14} />Novo oficiante</button>}
       </fieldset>
-      <Modal titulo="Novo oficiante" aberta={novo.aberta} fechar={() => setNovo({ ...novo, aberta: false })} rodape={<><button className="btn fantasma" onClick={() => setNovo({ ...novo, aberta: false })}>Cancelar</button><button className="btn primario" disabled={novo.nome.length < 3} onClick={criarOficiante}>Acrescentar</button></>}>
-        <Campo rotulo="Nome completo" obrigatorio><input className="entrada" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} /></Campo>
-        <Campo rotulo="Cargo (como aparece no texto)" obrigatorio ajuda="Ex.: Vice-cônsul, Cônsul-Geral"><input className="entrada" value={novo.cargo} onChange={(e) => setNovo({ ...novo, cargo: e.target.value })} /></Campo>
+      <Modal titulo={novo.id ? 'Editar oficiante' : 'Novo oficiante'} aberta={novo.aberta} fechar={() => setNovo({ ...novo, aberta: false })} rodape={<><button className="btn fantasma" onClick={() => setNovo({ ...novo, aberta: false })}>Cancelar</button><button className="btn primario" disabled={novo.nome.length < 3} onClick={criarOficiante}>{novo.id ? 'Guardar' : 'Acrescentar'}</button></>}>
+        <Campo rotulo="Nome completo (como aparece no texto e na assinatura)" obrigatorio><input className="entrada" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} /></Campo>
+        <Campo rotulo="Cargo (como aparece no texto)" obrigatorio ajuda="Ex.: Vice-cônsul, Cônsul-Geral. Na assinatura aparece em maiúsculas: «O VICE-CÔNSUL»."><input className="entrada" value={novo.cargo} onChange={(e) => setNovo({ ...novo, cargo: e.target.value })} /></Campo>
       </Modal>
+    </Seccao>
+  );
+}
+
+/** Texto com que cada documento de identificação aparece na procuração. */
+function TiposDocumento() {
+  const { pode } = useAuth(); const qc = useQueryClient(); const toast = useToast();
+  const tipos = useQuery({ queryKey: ['tipos-doc'], queryFn: () => api<{ code: string; name: string; template: string }[]>('/identity-document-types') });
+  const [ed, setEd] = useState<Record<string, { nome: string; modelo: string }>>({});
+  useEffect(() => { if (tipos.data) setEd(Object.fromEntries(tipos.data.map((t) => [t.code, { nome: t.name, modelo: t.template }]))); }, [tipos.data]);
+  async function gravar(code: string) { try { await api(`/identity-document-types/${code}`, { method: 'PUT', body: ed[code] }); qc.invalidateQueries({ queryKey: ['tipos-doc'] }); toast('Texto do documento guardado.'); } catch (e) { toast(mensagemErro(e), true); } }
+  return (
+    <Seccao titulo="Documentos de identificação no texto">
+      <p className="small muted" style={{ margin: 0 }}>Variáveis: <code className="mono">{'{{numero}}'}</code> <code className="mono">{'{{emissao}}'}</code> <code className="mono">{'{{validade}}'}</code> e o bloco <code className="mono">{'{{#if vitalicio}}…{{/if}}'}</code>. Aplica-se às procurações criadas a seguir.</p>
+      <fieldset disabled={!pode('catalog.manage')} style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {tipos.data?.map((t) => ed[t.code] && (
+          <div key={t.code} style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--linha)', paddingTop: 10 }}>
+            <Campo rotulo={`Nome (${t.code})`}><input className="entrada" value={ed[t.code].nome} onChange={(e) => setEd({ ...ed, [t.code]: { ...ed[t.code], nome: e.target.value } })} /></Campo>
+            <Campo rotulo="Texto na procuração"><textarea className="entrada mono" style={{ fontSize: 12 }} value={ed[t.code].modelo} onChange={(e) => setEd({ ...ed, [t.code]: { ...ed[t.code], modelo: e.target.value } })} /></Campo>
+            {pode('catalog.manage') && <button className="btn pequeno" style={{ alignSelf: 'flex-start' }} disabled={ed[t.code].nome === t.name && ed[t.code].modelo === t.template} onClick={() => gravar(t.code)}>Guardar</button>}
+          </div>
+        ))}
+      </fieldset>
+    </Seccao>
+  );
+}
+
+/** Formato do número atribuído na emissão. */
+function Numeracao() {
+  const { pode } = useAuth(); const toast = useToast(); const qc = useQueryClient();
+  const n = useQuery({ queryKey: ['numeracao'], queryFn: () => api<{ prefixo: string; serie: string; digitos: number }>('/settings/numeracao') });
+  const [v, setV] = useState<{ prefixo: string; serie: string; digitos: number } | null>(null);
+  useEffect(() => { if (n.data) setV({ prefixo: n.data.prefixo, serie: n.data.serie ?? '', digitos: n.data.digitos }); }, [n.data]);
+  if (!v) return null;
+  const exemplo = `${v.prefixo}${v.serie ? `-${v.serie}` : ''}-${new Date().getFullYear()}-${'1'.padStart(v.digitos, '0')}`;
+  async function gravar() { try { await api('/settings/numeracao', { method: 'PUT', body: v }); qc.invalidateQueries({ queryKey: ['numeracao'] }); toast('Numeração guardada.'); } catch (e) { toast(mensagemErro(e), true); } }
+  return (
+    <Seccao titulo="Numeração das procurações">
+      <fieldset disabled={!pode('catalog.manage')} style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="linha-form">
+          <Campo rotulo="Prefixo"><input className="entrada mono" value={v.prefixo} onChange={(e) => setV({ ...v, prefixo: e.target.value.toUpperCase() })} /></Campo>
+          <Campo rotulo="Série" opcional><input className="entrada mono" value={v.serie} onChange={(e) => setV({ ...v, serie: e.target.value.toUpperCase() })} /></Campo>
+          <Campo rotulo="Dígitos"><input className="entrada" type="number" min={3} max={8} value={v.digitos} onChange={(e) => setV({ ...v, digitos: Number(e.target.value) })} /></Campo>
+        </div>
+        <span className="small">Exemplo: <b className="mono">{exemplo}</b>. A contagem recomeça em cada ano e nunca repete números.</span>
+        {pode('catalog.manage') && <button className="btn pequeno" style={{ alignSelf: 'flex-start' }} onClick={gravar}>Guardar numeração</button>}
+      </fieldset>
     </Seccao>
   );
 }

@@ -32,8 +32,9 @@ export const modeloConsular = (modo: 'PROSA' | 'LISTA'): DefinicaoModelo => {
     `**Que,** pelo presente instrumento, ${O('constitui', 'constitui', 'constituem', 'constituem')} {{flex procuradores "seu bastante procurador" "sua bastante procuradora" "seus bastantes procuradores" "suas bastantes procuradoras"}} {{procuradoresIdentificacao}}{{#if formaActuacao}}, {{formaActuacao}}{{/if}}, a quem ${O('confere', 'confere', 'conferem', 'conferem')} poderes necessários de representação para`;
 
   return {
-    pagina: { formato: 'A4', margens: { topo: 1, direita: 2.27, fundo: 1.2, esquerda: 2.54 } },
-    tipografia: { fonte: 'Merriweather', tamanho: 12, entrelinha: 1.5, espacoParagrafo: 0, tamanhoTitulo: 12, espacoAssinaturas: 22 },
+    // Margens até à moldura (o texto fica 0,25 cm para dentro, como as bordas do Word): texto a 2,54 / 2,30 cm
+    pagina: { formato: 'A4', margens: { topo: 0.8, direita: 2.05, fundo: 1.2, esquerda: 2.29 } },
+    tipografia: { fonte: 'Merriweather', tamanho: 12, entrelinha: 1.5, espacoParagrafo: 0, tamanhoTitulo: 12, espacoAssinaturas: 40 },
     preenchimento: { activo: true, caracter: '-' },
     moldura: { activa: true, espessura: 1.5 },
     poderes: modo === 'PROSA' ? { modo: 'PROSA', separador: '; ', ultimoSeparador: '; e ' } : { modo: 'LISTA', numeracao: 'a)' },
@@ -42,7 +43,7 @@ export const modeloConsular = (modo: 'PROSA' | 'LISTA'): DefinicaoModelo => {
       logotipoLarguraCm: 2.05,
       filete: FILETE_VERMELHO,
       linhas: [
-        { texto: 'REPÚBLICA DE ANGOLA', negrito: true, tamanho: 9, fonte: "'Pragati Narrow', 'Arial Narrow', Arial, sans-serif" },
+        { texto: 'REPÚBLICA DE ANGOLA', negrito: true, tamanho: 10.5, fonte: "'Pragati Narrow', 'Arial Narrow', Arial, sans-serif" },
         { texto: '{{posto.nome}}', tamanho: 9 },
       ],
     },

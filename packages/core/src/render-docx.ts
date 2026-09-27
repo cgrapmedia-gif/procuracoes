@@ -20,7 +20,7 @@ const SEM_BORDA = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
 export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer> {
   const t = doc.tipografia;
   const size = t.tamanho * 2;
-  const larguraUtil = cm(21 - doc.pagina.margens.esquerda - doc.pagina.margens.direita);
+  const larguraUtil = cm(21 - doc.pagina.margens.esquerda - doc.pagina.margens.direita - (doc.moldura?.activa ? 0.5 : 0));
   const spacing = { line: Math.round(240 * t.entrelinha), lineRule: LineRuleType.AUTO, after: Math.round((t.espacoParagrafo ?? 6) * 20) };
   // Moldura: bordas esquerda/direita nos parágrafos do corpo (como no modelo em Word do posto)
   const esp = Math.round((doc.moldura?.espessura ?? 1.5) * 8);
@@ -108,7 +108,7 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
     creator: 'Plataforma de Procurações', title: doc.rodape,
     styles: { default: { document: { run: { font: t.fonte, size } } } },
     sections: [{
-      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: cm(doc.pagina.margens.topo), right: cm(doc.pagina.margens.direita), bottom: cm(doc.pagina.margens.fundo), left: cm(doc.pagina.margens.esquerda), footer: cm(0.5) } } },
+      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: cm(doc.pagina.margens.topo), right: cm(doc.pagina.margens.direita + (doc.moldura?.activa ? 0.25 : 0)), bottom: cm(doc.pagina.margens.fundo), left: cm(doc.pagina.margens.esquerda + (doc.moldura?.activa ? 0.25 : 0)), footer: cm(0.5) } } },
       ...(filhosRodape.length ? { footers: { default: new Footer({ children: filhosRodape }) } } : {}),
       children: paras,
     }],

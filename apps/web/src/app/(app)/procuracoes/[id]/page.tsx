@@ -14,6 +14,7 @@ import { avaliarRegras, validarCampo } from '@proc/core/browser';
 import { paraMotor } from '@/components/assistente/rascunho';
 import { useRascunho } from '@/components/assistente/rascunho';
 import { EtapaPartes } from '@/components/assistente/EtapaPartes';
+import { DadosActo } from '@/components/assistente/DadosActo';
 import { Construtor } from '@/components/assistente/Construtor';
 import { EtapaConfiguracao } from '@/components/assistente/EtapaConfiguracao';
 import { EtapaArquivo, EtapaEmissao, EtapaPrevia, EtapaRevisao } from '@/components/assistente/EtapasFinais';
@@ -76,7 +77,7 @@ function Assistente({ id }: { id: string }) {
         {DICAS[etapa] && d.estado === 'RASCUNHO' && <p className="dica" style={{ margin: 0 }}><Icone n="ideia" t={15} cor="var(--ouro)" />{DICAS[etapa]}</p>}
       </div>
       <main className={largo ? '' : 'conteudo'} style={largo ? { display: 'flex', flexDirection: 'column' } : undefined}>
-        {etapa === 2 && <EtapaPartes papel="outorgantes" r={r} actualizar={actualizar} editavel={!!editavel} />}
+        {etapa === 2 && <><DadosActo r={r} actualizar={actualizar} editavel={!!editavel} oficiantes={oficiantes.data ?? []} /><EtapaPartes papel="outorgantes" r={r} actualizar={actualizar} editavel={!!editavel} /></>}
         {etapa === 3 && <EtapaPartes papel="procuradores" r={r} actualizar={actualizar} editavel={!!editavel} />}
         {etapa === 4 && <Construtor r={r} actualizar={actualizar} catalogo={todos} categorias={categorias.data} tipoCodigo={d.tipo.codigo} editavel={!!editavel} />}
         {etapa === 5 && <EtapaConfiguracao r={r} actualizar={actualizar} catalogo={todos} editavel={!!editavel} />}

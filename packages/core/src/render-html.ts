@@ -23,6 +23,9 @@ function bloco(b: BlocoDoc): string {
   }
 }
 
+/** Altura natural da linha de cada tipo de letra (ascendente + descendente, em em), para reproduzir a entrelinha do Word. */
+export const FATOR_LINHA: Record<string, number> = { Merriweather: 1.257, 'Times New Roman': 1.15, Arial: 1.15, 'DejaVu Serif': 1.164, Georgia: 1.136 };
+
 export interface OpcoesHtml {
   /** Inclui @page e margens (para PDF). Na pré-visualização em ecrã, simula a folha. */
   paraImpressao?: boolean;
@@ -35,14 +38,17 @@ export function renderizarHtml(doc: DocumentoRenderizado, opts: OpcoesHtml = {})
   const t = doc.tipografia;
   const traco = doc.preenchimento.caracter.repeat(400);
   const esp = doc.moldura?.espessura ?? 1.5;
+  // Entrelinha ao estilo do Word: o múltiplo aplica-se à altura natural da letra (Merriweather ≈ 1,25 em)
+  const lh = +(t.entrelinha * (FATOR_LINHA[t.fonte] ?? 1.17)).toFixed(3);
   const fontes = `'${t.fonte}', ${t.fontesAlternativas ?? "Georgia, 'Liberation Serif', 'DejaVu Serif', serif"}`;
   const css = `
   @page { size: A4; ${opts.paraImpressao ? '' : `margin: ${m.topo}cm ${m.direita}cm ${m.fundo}cm ${m.esquerda}cm;`} }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font-family: ${fontes}; font-size: ${t.tamanho}pt; line-height: ${t.entrelinha}; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: ${fontes}; font-size: ${t.tamanho}pt; line-height: ${lh}; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .folha { ${opts.paraImpressao ? '' : `width: 21cm; min-height: 29.7cm; margin: 24px auto; padding: ${m.topo}cm ${m.direita}cm ${m.fundo}cm ${m.esquerda}cm; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.06);`} position: relative; }
-  header.cab { text-align: center; margin-bottom: 14pt; position: relative; z-index: 2; background: #fff; padding-bottom: 6pt; }
+  header.cab { text-align: center; margin-bottom: 6pt; position: relative; z-index: 2; background: #fff; padding-bottom: 4pt; }
+  header.cab div { line-height: 1.25; }
   .mold { position: ${opts.paraImpressao ? 'fixed' : 'absolute'}; top: ${opts.paraImpressao ? '0' : `${m.topo}cm`}; bottom: ${opts.paraImpressao ? '0' : `${m.fundo}cm`}; width: 0; border-left: ${esp}pt solid #111; z-index: 1; }
   .mold.esq { left: ${opts.paraImpressao ? '0' : `${m.esquerda}cm`}; }
   .mold.dir { right: ${opts.paraImpressao ? '0' : `${m.direita}cm`}; }
@@ -50,15 +56,14 @@ export function renderizarHtml(doc: DocumentoRenderizado, opts: OpcoesHtml = {})
   .corpo-doc { position: relative; z-index: 2; }
   .rod-ecra { margin-top: 24pt; }
   header.cab img { height: 64px; display: block; margin: 0 auto 6px; }
-  header.cab div { line-height: 1.3; }
   p { margin: 0 0 ${t.espacoParagrafo ?? 6}pt; hyphens: manual; text-align-last: left; orphans: 2; widows: 2; }
   /* Traços de preenchimento (prática notarial): ocupam o resto da última linha, impedindo acrescentos. */
   /* inline-block de largura zero: não altera a quebra de linha nem a justificação; o excesso é cortado pela margem. */
   p.fill { overflow: hidden; }
-  p.fill::after { content: "${traco}"; display: inline-block; width: 0; white-space: nowrap; overflow: visible; vertical-align: baseline; letter-spacing: 0.5px; }
-  h1.titulo { font-size: ${t.tamanhoTitulo ?? t.tamanho}pt; font-weight: 700; text-align: center; margin: 6pt 0 ${t.espacoParagrafo ?? 10}pt; letter-spacing: 1px; line-height: ${t.entrelinha}; }
+  p.fill::after { content: "${traco}"; display: inline-block; width: 0; white-space: nowrap; overflow: visible; vertical-align: baseline; letter-spacing: 0; }
+  h1.titulo { font-size: ${t.tamanhoTitulo ?? t.tamanho}pt; font-weight: 700; text-align: center; margin: 6pt 0 ${t.espacoParagrafo ?? 10}pt; letter-spacing: 0; line-height: ${lh}; }
   h1.fill-2 { display: flex; align-items: baseline; gap: 2px; }
-  h1.fill-2::before, h1.fill-2::after { content: "${traco}"; flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 400; }
+  h1.fill-2::before, h1.fill-2::after { content: "${traco}"; flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 700; }
   p.alinea { padding-left: 2em; text-indent: -2em; }
   p.alinea .mk { display: inline-block; width: 2em; text-indent: 0; }
   mark.ph { background: #fff3bf; color: #7a5b00; border-radius: 2px; padding: 0 2px; }

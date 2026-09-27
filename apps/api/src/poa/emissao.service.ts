@@ -32,7 +32,8 @@ export class EmissaoService {
     await tx.insert(s.sequences).values({ orgId, code: 'PROC', prefix: cfg.prefixo, series: cfg.serie, pattern: cfg.padrao, digits: cfg.digitos, year: ano }).onConflictDoNothing();
     const [r] = await tx.update(s.sequences).set({ lastValue: sql`${s.sequences.lastValue} + 1` })
       .where(and(eq(s.sequences.orgId, orgId), eq(s.sequences.code, 'PROC'), eq(s.sequences.series, cfg.serie), eq(s.sequences.year, ano))).returning();
-    return formatarNumeroDocumento({ padrao: r.pattern, prefixo: r.prefix, serie: r.series, digitos: r.digits }, ano, r.lastValue);
+    // O formato vem sempre da configuração actual; a linha da sequência só guarda o contador (por série e ano)
+    return formatarNumeroDocumento({ padrao: cfg.padrao, prefixo: cfg.prefixo, serie: cfg.serie, digitos: cfg.digitos }, ano, r.lastValue);
   }
 
   /** directa=true: emissão directa a partir do rascunho (permissão poa.issue_direct), sem revisão por terceiros. */

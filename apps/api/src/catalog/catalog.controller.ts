@@ -62,6 +62,35 @@ export class CatalogController {
   @Get('identity-document-types') @Requer('person.read')
   tiposDocumento() { return this.db.select().from(s.identityDocumentTypes).where(eq(s.identityDocumentTypes.active, true)); }
 
+  /** Texto com que cada tipo de documento aparece na procuração (ex.: "Bilhete de Identidade n.º …, emitido pela …"). */
+  @Put('identity-document-types/:code') @Requer('catalog.manage')
+  async editarTipoDocumento(@Param('code') code: string, @Body(new ZodPipe(z.object({ nome: z.string().trim().min(3).max(120), modelo: z.string().trim().min(5).max(1000) }))) b: { nome: string; modelo: string }, @Actor() u: Utilizador) {
+    renderizarTeste(b.modelo);
+    return this.db.transaction(async (tx) => {
+      const [t] = await tx.update(s.identityDocumentTypes).set({ name: b.nome, template: b.modelo }).where(eq(s.identityDocumentTypes.code, code)).returning();
+      if (!t) throw new NotFoundException();
+      await this.audit.log(tx, u, 'TIPO_DOCUMENTO_EDITAR', 'identity_document_type', code, b);
+      return t;
+    });
+  }
+
+  /** Numeração das procurações (prefixo, série, dígitos). Aplica-se às próximas emissões. */
+  @Get('settings/numeracao') @Requer('poa.read')
+  async numeracao(@Actor() u: Utilizador) {
+    const [r] = await this.db.select().from(s.settings).where(and(eq(s.settings.orgId, u.orgId), eq(s.settings.key, 'numeracao')));
+    return r?.value ?? { padrao: '{PREFIXO}-{ANO}-{SEQ}', prefixo: 'PROC', serie: '', digitos: 6 };
+  }
+
+  @Put('settings/numeracao') @Requer('catalog.manage')
+  editarNumeracao(@Body(new ZodPipe(z.object({ prefixo: z.string().trim().regex(/^[A-Z0-9]{1,12}$/, 'prefixo: letras maiúsculas e números'), serie: z.string().trim().regex(/^[A-Z0-9]{0,8}$/).default(''), digitos: z.number().int().min(3).max(8) }))) b: { prefixo: string; serie: string; digitos: number }, @Actor() u: Utilizador) {
+    const valor = { padrao: b.serie ? '{PREFIXO}-{SERIE}-{ANO}-{SEQ}' : '{PREFIXO}-{ANO}-{SEQ}', ...b };
+    return this.db.transaction(async (tx) => {
+      await tx.insert(s.settings).values({ orgId: u.orgId, key: 'numeracao', value: valor }).onConflictDoUpdate({ target: [s.settings.orgId, s.settings.key], set: { value: valor, updatedAt: new Date() } });
+      await this.audit.log(tx, u, 'NUMERACAO_EDITAR', 'setting', 'numeracao', valor);
+      return valor;
+    });
+  }
+
   @Get('entities') @Requer('poa.read')
   entidades(@Actor() u: Utilizador, @Query('tipo') tipo?: string) {
     return this.db.select().from(s.entities).where(and(eq(s.entities.orgId, u.orgId), eq(s.entities.active, true), tipo ? eq(s.entities.type, tipo) : undefined)).orderBy(asc(s.entities.name));
