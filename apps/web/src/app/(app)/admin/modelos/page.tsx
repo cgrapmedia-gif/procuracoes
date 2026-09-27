@@ -1,7 +1,7 @@
 'use client';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BlocoModelo, DadosProcuracao, DefinicaoModelo, Filete, construirDocumento, renderizarHtml } from '@proc/core/browser';
+import { BlocoModelo, DadosProcuracao, DefinicaoModelo, Filete, FileteLivre, construirDocumento, renderizarHtml } from '@proc/core/browser';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { dataHoraPT } from '@/lib/formato';
@@ -57,6 +57,35 @@ function EditorFilete({ rotulo, f, mudar }: { rotulo: string; f?: Filete; mudar:
     </fieldset>
   );
 }
+const PRESETS: [string, FileteLivre][] = [
+  ['Horizontal no cabeçalho', { activo: true, zona: 'CABECALHO', orientacao: 'HORIZONTAL', cor: '#E30613', espessuraPt: 1, comprimentoCm: 16, xCm: 0, yCm: 3 }],
+  ['Vertical no cabeçalho', { activo: true, zona: 'CABECALHO', orientacao: 'VERTICAL', cor: '#E30613', espessuraPt: 1, comprimentoCm: 2.5, xCm: 0, yCm: 0 }],
+  ['Horizontal no rodapé', { activo: true, zona: 'RODAPE', orientacao: 'HORIZONTAL', cor: '#E30613', espessuraPt: 1, comprimentoCm: 16, xCm: 0, yCm: -0.2 }],
+  ['Vertical no rodapé', { activo: true, zona: 'RODAPE', orientacao: 'VERTICAL', cor: '#E30613', espessuraPt: 1, comprimentoCm: 1.2, xCm: 8, yCm: 0 }],
+];
+
+function EditorFileteLivre({ n, f, mudar, remover }: { n: number; f: FileteLivre; mudar: (f: FileteLivre) => void; remover: () => void }) {
+  return (
+    <fieldset style={{ border: '1px solid var(--linha)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <legend style={{ fontSize: 13, fontWeight: 600, padding: '0 4px' }}>Filete livre {n}</legend>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={f.activo} onChange={(e) => mudar({ ...f, activo: e.target.checked })} />Mostrar</label>
+        <select className="entrada" style={{ width: 150 }} aria-label="Zona" value={f.zona} onChange={(e) => mudar({ ...f, zona: e.target.value as 'CABECALHO' })}><option value="CABECALHO">No cabeçalho</option><option value="RODAPE">No rodapé</option></select>
+        <select className="entrada" style={{ width: 140 }} aria-label="Orientação" value={f.orientacao} onChange={(e) => mudar({ ...f, orientacao: e.target.value as 'HORIZONTAL' })}><option value="HORIZONTAL">Horizontal</option><option value="VERTICAL">Vertical</option></select>
+        <span style={{ flex: 1 }} />
+        <button type="button" className="btn icone" aria-label="Remover filete" onClick={remover}><Icone n="lixo" t={15} /></button>
+      </div>
+      <div className="linha-form">
+        <Campo rotulo="Cor"><input className="entrada" type="color" style={{ padding: 4 }} value={f.cor} onChange={(e) => mudar({ ...f, cor: e.target.value })} /></Campo>
+        <Num rotulo="Espessura" unidade="pt" valor={f.espessuraPt} passo={0.25} min={0.25} max={8} mudar={(v) => mudar({ ...f, espessuraPt: v })} />
+        <Num rotulo={f.orientacao === 'HORIZONTAL' ? 'Comprimento' : 'Altura'} unidade="cm" valor={f.comprimentoCm} passo={0.1} min={0.1} max={30} mudar={(v) => mudar({ ...f, comprimentoCm: v })} />
+        <Num rotulo="Posição horizontal (da esquerda)" unidade="cm" valor={f.xCm} passo={0.05} min={-5} max={25} mudar={(v) => mudar({ ...f, xCm: v })} />
+        <Num rotulo="Posição vertical (do topo da zona)" unidade="cm" valor={f.yCm} passo={0.05} min={-5} max={10} mudar={(v) => mudar({ ...f, yCm: v })} />
+      </div>
+    </fieldset>
+  );
+}
+
 const lerPng = (f: File) => new Promise<string>((res, rej) => { if (f.type !== 'image/png') return rej(new Error('Use uma imagem PNG.')); const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(new Error('Não foi possível ler a imagem')); r.readAsDataURL(f); });
 
 export default function Modelos() {
@@ -124,6 +153,7 @@ export default function Modelos() {
                   <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={!!def.moldura?.activa} onChange={(e) => up((d) => { d.moldura = { activa: e.target.checked, espessura: d.moldura?.espessura ?? 1.5 }; })} />Moldura (linhas verticais à esquerda e à direita)</label>
                   {def.moldura?.activa && <Num rotulo="Espessura da moldura" unidade="pt" valor={def.moldura.espessura ?? 1.5} passo={0.25} min={0.25} max={6} mudar={(v) => up((d) => { d.moldura = { activa: true, espessura: v }; })} />}
                   <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={def.preenchimento.activo} onChange={(e) => up((d) => { d.preenchimento.activo = e.target.checked; })} />Traços a fechar os parágrafos</label>
+                  <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={def.marcaAguaRascunho !== false} onChange={(e) => up((d) => { d.marcaAguaRascunho = e.target.checked; })} />Marca de água «RASCUNHO» nas pré-visualizações (os documentos emitidos nunca têm)</label>
                   <Campo rotulo="Carácter de preenchimento"><select className="entrada" value={def.preenchimento.caracter} onChange={(e) => up((d) => { d.preenchimento.caracter = e.target.value as '-'; })}><option value="-">Traço (-)</option><option value=".">Ponto (.)</option><option value="_">Sublinhado (_)</option></select></Campo>
                 </Seccao>
                 <Seccao titulo="Cabeçalho">
@@ -139,7 +169,22 @@ export default function Modelos() {
                       <label style={{ display: 'flex', gap: 8, height: 42, alignItems: 'center' }}><input type="checkbox" checked={!!l.negrito} onChange={(e) => up((d) => { d.cabecalho.linhas[i].negrito = e.target.checked; })} />Negrito</label>
                     </div>
                   ))}
-                  <EditorFilete rotulo="Filete do cabeçalho" f={def.cabecalho.filete} mudar={(f) => up((d) => { d.cabecalho.filete = f; })} />
+                </Seccao>
+                <Seccao titulo="Filetes (linhas horizontais e verticais)">
+                  <p className="small muted" style={{ margin: 0 }}>Os filetes fixos acompanham o texto (por baixo do cabeçalho, por cima do rodapé, ao lado dos contactos). Os filetes livres ficam onde indicar: horizontais ou verticais, no cabeçalho ou no rodapé, com posição medida a partir do canto superior esquerdo da zona.</p>
+                  <EditorFilete rotulo="Fixo: por baixo do cabeçalho" f={def.cabecalho.filete} mudar={(f) => up((d) => { d.cabecalho.filete = f; })} />
+                  {def.rodape.bloco && <EditorFilete rotulo="Fixo: por cima do rodapé" f={def.rodape.bloco.filete} mudar={(f) => up((d) => { d.rodape.bloco!.filete = f; })} />}
+                  {def.rodape.bloco && (
+                    <fieldset style={{ border: '1px solid var(--linha)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <legend style={{ fontSize: 13, fontWeight: 600, padding: '0 4px' }}>Fixo: barra vertical dos contactos</legend>
+                      <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={def.rodape.bloco.corBarra !== 'none'} onChange={(e) => up((d) => { d.rodape.bloco!.corBarra = e.target.checked ? '#E30613' : 'none'; })} />Mostrar</label>
+                      {def.rodape.bloco.corBarra !== 'none' && <Campo rotulo="Cor"><input className="entrada" type="color" style={{ padding: 4 }} value={def.rodape.bloco.corBarra ?? '#E30613'} onChange={(e) => up((d) => { d.rodape.bloco!.corBarra = e.target.value; })} /></Campo>}
+                    </fieldset>
+                  )}
+                  {(def.filetes ?? []).map((f, i) => <EditorFileteLivre key={i} n={i + 1} f={f} mudar={(nf) => up((d) => { d.filetes![i] = nf; })} remover={() => up((d) => { d.filetes!.splice(i, 1); })} />)}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {PRESETS.map(([rot, f]) => <button key={rot} type="button" className="btn pequeno" onClick={() => up((d) => { d.filetes = [...(d.filetes ?? []), { ...f }]; })}><Icone n="mais" t={14} />{rot}</button>)}
+                  </div>
                 </Seccao>
                 <Seccao titulo="Textos do documento">
                   <p className="small muted" style={{ margin: 0 }}>Variáveis disponíveis: {VARIAVEIS.map((v) => <code key={v} className="mono" style={{ marginRight: 6 }}>{v}</code>)}</p>
@@ -171,11 +216,9 @@ export default function Modelos() {
                     <div className="linha-form">
                       <Num rotulo="Tamanho dos contactos" unidade="pt" valor={def.rodape.bloco.tamanho ?? 6} passo={0.5} min={4} max={12} mudar={(v) => up((d) => { d.rodape.bloco!.tamanho = v; })} />
                       <Num rotulo="Altura dos logótipos" unidade="cm" valor={def.rodape.bloco.imagemAlturaCm ?? 1.05} passo={0.05} min={0.3} max={4} mudar={(v) => up((d) => { d.rodape.bloco!.imagemAlturaCm = v; })} />
-                      <Campo rotulo="Cor da barra dos contactos"><input className="entrada" type="color" style={{ padding: 4 }} value={def.rodape.bloco.corBarra ?? '#E30613'} onChange={(e) => up((d) => { d.rodape.bloco!.corBarra = e.target.value; })} /></Campo>
                       <Num rotulo="Espaço reservado no fim" unidade="cm" valor={def.rodape.bloco.alturaReservadaCm ?? 2.9} passo={0.1} min={1} max={8} mudar={(v) => up((d) => { d.rodape.bloco!.alturaReservadaCm = v; })} />
                     </div>
                     <Campo rotulo="Substituir logótipos do rodapé (PNG)"><input className="entrada" type="file" accept="image/png" onChange={async (e) => { const f = e.target.files?.[0]; if (f) try { const u = await lerPng(f); up((d) => { d.rodape.bloco!.imagem = u; }); } catch (x) { toast(mensagemErro(x), true); } }} /></Campo>
-                    <EditorFilete rotulo="Filete do rodapé" f={def.rodape.bloco.filete} mudar={(f) => up((d) => { d.rodape.bloco!.filete = f; })} />
                   </> : <p className="muted small" style={{ margin: 0 }}>Este modelo não tem bloco de rodapé institucional.</p>}
                   <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={def.rodape.paginacao} onChange={(e) => up((d) => { d.rodape.paginacao = e.target.checked; })} />Numeração de páginas</label>
                   <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={!!def.rodape.texto} onChange={(e) => up((d) => { d.rodape.texto = e.target.checked ? '{{documento.numero}}' : ''; })} />Número da procuração e código de verificação no rodapé</label>

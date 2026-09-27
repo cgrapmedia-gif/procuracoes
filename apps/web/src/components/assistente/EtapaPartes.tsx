@@ -37,6 +37,7 @@ export function EtapaPartes({ papel, r, actualizar, editavel }: { papel: 'outorg
               <span className="avatar" style={{ background: 'var(--realce)', color: 'var(--tinta)' }}>{p.nome.split(' ').map((x) => x[0]).slice(0, 2).join('')}</span>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div><b style={{ fontWeight: 600 }}>{p.nome}</b> <span className="small muted">{p.sexo === 'F' ? 'feminino' : 'masculino'}</span></div>
+                {!p.sexo && <span className="small" style={{ color: 'var(--ambar)', fontWeight: 600 }}>Dados incompletos (sexo por indicar): edite a pessoa antes de emitir.</span>}
                 {papel === 'outorgantes' && (
                   <Campo rotulo="Qualidade em que outorga" opcional ajuda="Preencha só se outorga em representação, ex.: «Sócio Gerente da sociedade X, Lda.»">
                     <input className="entrada" disabled={!editavel} value={p.qualidade ?? ''} onChange={(e) => actualizar((x) => ({ ...x, outorgantes: x.outorgantes.map((o) => (o.pessoaId === p.pessoaId ? { ...o, qualidade: e.target.value } : o)) }))} />

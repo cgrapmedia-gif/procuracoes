@@ -63,11 +63,12 @@ export const identityDocumentTypes = pgTable('identity_document_types', { code: 
 
 export const persons = pgTable('persons', {
   id: id(), orgId: uuid('org_id').notNull().references(() => organizations.id),
-  fullName: text('full_name').notNull(), searchName: text('search_name').notNull(), sex: sexoEnum('sex').notNull(),
+  fullName: text('full_name').notNull(), searchName: text('search_name').notNull(), sex: sexoEnum('sex'), // pode faltar em registos importados (a emissão exige-o)
   birthDate: date('birth_date'), nationality: text('nationality').notNull(), birthplace: text('birthplace'),
   civilStatus: estadoCivilEnum('civil_status'), spouse: text('spouse'), propertyRegime: text('property_regime'), profession: text('profession'),
   docType: varchar('doc_type', { length: 30 }).notNull().references(() => identityDocumentTypes.code),
-  docNumberEnc: text('doc_number_enc').notNull(), docNumberBidx: varchar('doc_number_bidx', { length: 64 }).notNull(),
+  // Documento pode faltar em registos importados; a checklist de emissão exige-o
+  docNumberEnc: text('doc_number_enc'), docNumberBidx: varchar('doc_number_bidx', { length: 64 }),
   docIssueDate: date('doc_issue_date'), docExpiry: date('doc_expiry'), docLifetime: boolean('doc_lifetime').notNull().default(false),
   nifEnc: text('nif_enc'), nifBidx: varchar('nif_bidx', { length: 64 }),
   address: jsonb('address'), phoneEnc: text('phone_enc'), emailEnc: text('email_enc'), notesEnc: text('notes_enc'),
@@ -76,6 +77,8 @@ export const persons = pgTable('persons', {
   docUq: uniqueIndex('persons_doc_uq').on(t.orgId, t.docType, t.docNumberBidx), // evita duplicar a mesma pessoa
   nifIdx: index('persons_nif_idx').on(t.nifBidx),
   nameIdx: index('persons_search_name_trgm').using('gin', sql`${t.searchName} gin_trgm_ops`),
+  docIdx: index('persons_doc_bidx_idx').on(t.docNumberBidx),
+  recentesIdx: index('persons_org_updated_idx').on(t.orgId, t.updatedAt),
 }));
 
 /** Entidades referenciáveis nos poderes (bancos, conservatórias, tribunais, segurança social…). */

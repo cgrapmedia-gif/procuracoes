@@ -6,17 +6,17 @@ import { ApiError, api } from '@/lib/api';
 import { Campo, Gaveta, mensagemErro } from './ui';
 
 export interface PessoaCompleta {
-  id?: string; nomeCompleto: string; sexo: 'M' | 'F'; dataNascimento?: string | null; nacionalidade: string; naturalidade?: string | null;
+  id?: string; nomeCompleto: string; sexo: 'M' | 'F' | null; dataNascimento?: string | null; nacionalidade: string; naturalidade?: string | null;
   estadoCivil?: string | null; conjuge?: string | null; regimeBens?: string | null; profissao?: string | null;
   documento: { tipo: string; numero: string; dataEmissao?: string | null; validade?: string | null; vitalicio: boolean };
-  nif?: string | null; morada?: { linha: string; codigoPostal?: string; localidade?: string; concelho?: string; provincia?: string; pais?: string } | null;
+  nif?: string | null; morada?: { linha: string; codigoPostal?: string; localidade?: string; concelho?: string; distrito?: string; provincia?: string; pais?: string } | null;
   telefone?: string | null; email?: string | null; observacoes?: string | null;
 }
 const VAZIA: PessoaCompleta = { nomeCompleto: '', sexo: 'F', nacionalidade: 'angolana', documento: { tipo: 'BI_AO', numero: '', vitalicio: false }, morada: { linha: '', pais: 'Portugal' } };
 const ESTADOS_CIVIS = [['SOLTEIRO', 'Solteiro(a)'], ['CASADO', 'Casado(a)'], ['DIVORCIADO', 'Divorciado(a)'], ['VIUVO', 'Viúvo(a)'], ['SEPARADO', 'Separado(a) judicialmente'], ['UNIAO_FACTO', 'União de facto']];
 
 /** Gaveta de criação/edição de pessoa. Detecta duplicados pelo documento de identificação (409 do servidor) e oferece reutilizar. */
-export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial }: { aberta: boolean; fechar: () => void; pessoaId?: string; nomeInicial?: string; aoGuardar: (p: { id: string; nomeCompleto: string; sexo: 'M' | 'F' }) => void }) {
+export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial }: { aberta: boolean; fechar: () => void; pessoaId?: string; nomeInicial?: string; aoGuardar: (p: { id: string; nomeCompleto: string; sexo: 'M' | 'F' | null }) => void }) {
   const [p, setP] = useState<PessoaCompleta>(VAZIA);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState('');
@@ -32,22 +32,27 @@ export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial 
   const setDoc = (patch: Partial<PessoaCompleta['documento']>) => setP((x) => ({ ...x, documento: { ...x.documento, ...patch } }));
   const setMor = (patch: Partial<NonNullable<PessoaCompleta['morada']>>) => setP((x) => ({ ...x, morada: { linha: '', ...x.morada, ...patch } }));
 
+  /** Só o nome é obrigatório para gravar; o resto gera avisos (a emissão da procuração exige os dados completos). */
   function validar(): boolean {
     const e: Record<string, string> = {};
-    if (p.nomeCompleto.trim().length < 3) e.nome = 'Indique o nome completo.';
-    if (!p.documento.numero.trim()) e.doc = 'Indique o número do documento.';
-    else if (p.documento.tipo === 'BI_AO' && !biAngolaValido(p.documento.numero)) e.doc = 'Formato do BI angolano: 9 dígitos, 2 letras, 3 dígitos (ex.: 000000000LA000).';
-    if (!p.documento.vitalicio && !p.documento.validade) e.validade = 'Indique a validade ou marque como vitalício.';
+    if (p.nomeCompleto.trim().length < 2) e.nome = 'Indique o nome completo.';
     if (p.email && !emailValido(p.email)) e.email = 'Email inválido.';
     if (p.morada?.codigoPostal && p.morada.pais === 'Portugal' && !codigoPostalPTValido(p.morada.codigoPostal)) e.cp = 'Formato 0000-000.';
     setErros(e);
     return Object.keys(e).length === 0;
   }
+  const avisos = [
+    !p.documento.numero?.trim() && 'sem número de documento',
+    p.documento.numero?.trim() && p.documento.tipo === 'BI_AO' && !biAngolaValido(p.documento.numero) && 'n.º de BI com formato não habitual (esperado: 9 dígitos, 2 letras, 3 dígitos)',
+    !p.documento.vitalicio && !p.documento.validade && 'sem validade do documento',
+    !p.sexo && 'sexo por indicar',
+    !p.nacionalidade?.trim() && 'nacionalidade por indicar',
+  ].filter(Boolean) as string[];
   async function guardar(ev?: FormEvent) {
     ev?.preventDefault();
     if (!validar()) return;
     setAG(true); setErroGeral('');
-    const limpa = { ...p, morada: p.morada?.linha ? p.morada : null, id: undefined };
+    const limpa = { ...p, morada: p.morada?.linha || p.morada?.concelho || p.morada?.distrito ? p.morada : null, id: undefined };
     for (const k of ['dataNascimento', 'naturalidade', 'estadoCivil', 'conjuge', 'regimeBens', 'profissao', 'nif', 'telefone', 'email', 'observacoes'] as const) if (!limpa[k]) (limpa as Record<string, unknown>)[k] = null;
     if (!limpa.documento.dataEmissao) limpa.documento = { ...limpa.documento, dataEmissao: null };
     try {
@@ -64,10 +69,11 @@ export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial 
       <form onSubmit={guardar} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {erroGeral && <div className="aviso erro" role="alert">{erroGeral}</div>}
         {existente && <div className="aviso atencao"><span style={{ flex: 1 }}>Já existe uma pessoa com este documento: <b>{existente.nome}</b>.</span><button type="button" className="btn pequeno" onClick={() => { aoGuardar({ id: existente.id, nomeCompleto: existente.nome, sexo: p.sexo }); fechar(); }}>Usar esta pessoa</button></div>}
+        {avisos.length > 0 && <div className="aviso atencao" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}><b>Pode gravar, mas para emitir uma procuração com esta pessoa falta:</b>{avisos.map((a) => <span key={a} className="small">• {a}</span>)}</div>}
         <Campo rotulo="Nome completo" obrigatorio erro={erros.nome}><input className="entrada" value={p.nomeCompleto} onChange={(e) => set({ nomeCompleto: e.target.value })} aria-invalid={!!erros.nome} /></Campo>
         <div className="linha-form">
-          <Campo rotulo="Sexo" obrigatorio ajuda="Determina a concordância no texto (procurador/procuradora)."><select className="entrada" value={p.sexo} onChange={(e) => set({ sexo: e.target.value as 'M' | 'F' })}><option value="F">Feminino</option><option value="M">Masculino</option></select></Campo>
-          <Campo rotulo="Nacionalidade" obrigatorio ajuda="Forma feminina: angolana, portuguesa…"><input className="entrada" value={p.nacionalidade} onChange={(e) => set({ nacionalidade: e.target.value })} /></Campo>
+          <Campo rotulo="Sexo" ajuda="Determina a concordância no texto (procurador/procuradora)."><select className="entrada" value={p.sexo ?? ''} onChange={(e) => set({ sexo: (e.target.value || null) as 'M' | 'F' | null })}><option value="">Por indicar</option><option value="F">Feminino</option><option value="M">Masculino</option></select></Campo>
+          <Campo rotulo="Nacionalidade" ajuda="Forma feminina: angolana, portuguesa…"><input className="entrada" value={p.nacionalidade} onChange={(e) => set({ nacionalidade: e.target.value })} /></Campo>
         </div>
         <div className="linha-form">
           <Campo rotulo="Estado civil" opcional><select className="entrada" value={p.estadoCivil ?? ''} onChange={(e) => set({ estadoCivil: e.target.value || null })}><option value="">—</option>{ESTADOS_CIVIS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}</select></Campo>
@@ -81,7 +87,7 @@ export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial 
         <h3>Documento de identificação</h3>
         <div className="linha-form">
           <Campo rotulo="Tipo" obrigatorio><select className="entrada" value={p.documento.tipo} onChange={(e) => setDoc({ tipo: e.target.value })}>{tipos.data?.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}</select></Campo>
-          <Campo rotulo="Número" obrigatorio erro={erros.doc}><input className="entrada mono" value={p.documento.numero} onChange={(e) => setDoc({ numero: e.target.value.toUpperCase() })} aria-invalid={!!erros.doc} /></Campo>
+          <Campo rotulo="Número" erro={erros.doc}><input className="entrada mono" value={p.documento.numero ?? ''} onChange={(e) => setDoc({ numero: e.target.value.toUpperCase() })} aria-invalid={!!erros.doc} /></Campo>
         </div>
         <div className="linha-form">
           <Campo rotulo="Data de emissão" opcional><input className="entrada" type="date" value={p.documento.dataEmissao ?? ''} onChange={(e) => setDoc({ dataEmissao: e.target.value })} /></Campo>

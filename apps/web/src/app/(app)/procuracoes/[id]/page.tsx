@@ -1,14 +1,14 @@
 'use client';
 import Link from 'next/link';
-import { Suspense, use, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, use, useCallback, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { Categoria, DetalheProcuracao, PoderCatalogo, Verificacao } from '@/lib/tipos';
 import { Casca } from '@/components/Casca';
 import { Icone } from '@/components/Icone';
-import { EstadoBadge, Giro } from '@/components/ui';
+import { Campo, EstadoBadge, Giro, Modal, mensagemErro, useToast } from '@/components/ui';
 import { DICAS, ETAPAS, EstadoEtapa, Etapas } from '@/components/assistente/Etapas';
 import { avaliarRegras, validarCampo } from '@proc/core/browser';
 import { paraMotor } from '@/components/assistente/rascunho';
@@ -68,6 +68,7 @@ function Assistente({ id }: { id: string }) {
             <span className="muted">{r.outorgantes.length ? `Outorgante: ${r.outorgantes.map((o) => o.nome).join(', ')}` : 'Outorgante por identificar'}{r.procuradores.length ? ` · Procurador(es): ${r.procuradores.map((o) => o.nome).join(', ')}` : ''}</span>
           </div>
           {etapa < 8 && <Link className="btn" href={passo(8)}><Icone n="olho" t={16} />Pré-visualizar</Link>}
+          {pode('poa.purge') && <ApagarProcuracao id={id} numero={d.numero} />}
         </div>
         {!editavel && d.estado === 'RASCUNHO' && <div className="aviso info">Modo de consulta: o seu perfil não pode editar rascunhos.</div>}
         {d.estado !== 'RASCUNHO' && etapa < 7 && <div className="aviso info">Procuração em {d.estado.toLowerCase().replace('_', ' ')}: o conteúdo está bloqueado.</div>}
@@ -101,4 +102,24 @@ function Assistente({ id }: { id: string }) {
 export default function Pagina({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   return <Casca migalhas={['Procurações', 'Procuração']}><Suspense><Assistente id={id} /></Suspense></Casca>;
+}
+
+/** Apagar esta procuração e os seus documentos (administradores). Irreversível; fica na auditoria. */
+function ApagarProcuracao({ id, numero }: { id: string; numero: string | null }) {
+  const router = useRouter(); const toast = useToast(); const qc = useQueryClient();
+  const [aberta, setA] = useState(false); const [motivo, setM] = useState(''); const [a, setAp] = useState(false);
+  async function apagar() {
+    setAp(true);
+    try { await api(`/poas/${id}`, { method: 'DELETE', body: { motivo } }); toast(`Procuração ${numero ?? '(rascunho)'} apagada.`); qc.invalidateQueries({ queryKey: ['poas'] }); router.push('/procuracoes'); }
+    catch (e) { toast(mensagemErro(e), true); setAp(false); }
+  }
+  return (
+    <>
+      <button className="btn fantasma" onClick={() => setA(true)} title="Apagar procuração"><Icone n="lixo" t={16} />Apagar</button>
+      <Modal titulo="Apagar procuração" aberta={aberta} fechar={() => setA(false)} rodape={<><button className="btn fantasma" onClick={() => setA(false)}>Cancelar</button><button className="btn perigo" disabled={motivo.trim().length < 5 || a} onClick={apagar}>{a ? 'A apagar…' : 'Apagar definitivamente'}</button></>}>
+        <div className="aviso erro">Apaga a procuração {numero ?? '(rascunho)'} e todos os seus documentos (PDF, DOCX e digitalizações). Não é possível desfazer. Fica registado na auditoria quem apagou e porquê.</div>
+        <Campo rotulo="Motivo" obrigatorio><input className="entrada" value={motivo} onChange={(e) => setM(e.target.value)} placeholder="Ex.: documento de teste" autoFocus /></Campo>
+      </Modal>
+    </>
+  );
 }

@@ -18,6 +18,11 @@ export interface ResultadoLinha { linha: number; codigo: string; estado: 'NOVO' 
  *  2) confirmação — cria os poderes numa única transacção (tudo ou nada).
  * Colunas: codigo, categoria, nome, descricao, tipo, texto, texto_alternativo, campos (JSON), regras (JSON ou "REQUER:X;SUGERE:Y"), exclusivo, tipos_permitidos ("A;B"), publicar
  */
+/** Texto de um ficheiro: UTF-8 ou, se não for UTF-8 válido, Windows-1252 (CSV gravado pelo Excel em português). */
+export function decodificarTexto(buf: Buffer): string {
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { return new TextDecoder('windows-1252').decode(buf); }
+}
+
 @Injectable()
 export class ImportService {
   constructor(@InjectDb() private readonly db: Db, private readonly powersSvc: PowersService, private readonly audit: AuditService) {}
@@ -26,7 +31,7 @@ export class ImportService {
     const ext = nome.toLowerCase().split('.').pop();
     if (ext === 'json') { const j = JSON.parse(buf.toString('utf8')); if (!Array.isArray(j)) throw new BadRequestException('JSON deve ser uma lista'); return j; }
     if (ext === 'csv') {
-      const r = Papa.parse<Linha>(buf.toString('utf8').replace(/^\uFEFF/, ''), { header: true, skipEmptyLines: true, delimitersToGuess: [',', ';', '\t'] });
+      const r = Papa.parse<Linha>(decodificarTexto(buf).replace(/^\uFEFF/, ''), { header: true, skipEmptyLines: true, delimitersToGuess: [',', ';', '\t'] });
       if (r.errors.length) throw new BadRequestException({ message: 'CSV inválido', erros: r.errors.slice(0, 20).map((e) => `linha ${(e.row ?? 0) + 2}: ${e.message}`) });
       return r.data;
     }

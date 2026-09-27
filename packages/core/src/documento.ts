@@ -20,6 +20,15 @@ export type BlocoModelo =
 
 export interface ItemAssinatura { rotulo: string; nome?: string; alinhamento?: 'ESQUERDA' | 'CENTRO' }
 export interface LinhaCabecalho { texto: string; negrito?: boolean; tamanho?: number; fonte?: string }
+/**
+ * Filete livre: linha horizontal ou vertical posicionada no cabeçalho ou no rodapé.
+ * xCm/yCm = distância ao canto superior esquerdo da zona (cabeçalho: área do texto no topo da 1.ª página;
+ * rodapé: bloco institucional). comprimentoCm = largura (horizontal) ou altura (vertical).
+ */
+export interface FileteLivre {
+  activo: boolean; zona: 'CABECALHO' | 'RODAPE'; orientacao: 'HORIZONTAL' | 'VERTICAL';
+  cor: string; espessuraPt: number; comprimentoCm: number; xCm: number; yCm: number;
+}
 /** Linha horizontal decorativa (ex.: filete vermelho do papel timbrado). */
 export interface Filete { activo: boolean; cor: string; espessuraPt: number; larguraPct: number }
 /** Bloco de rodapé institucional: contactos à esquerda (com barra de cor) e imagem à direita. */
@@ -43,6 +52,10 @@ export interface DefinicaoModelo {
   rodape: { texto: string; paginacao: boolean; bloco?: BlocoRodape };
   /** Linhas verticais à esquerda e à direita do texto em todas as páginas (espessura em pt). */
   moldura?: { activa: boolean; espessura?: number };
+  /** Filetes livres (horizontais ou verticais) no cabeçalho e no rodapé. */
+  filetes?: FileteLivre[];
+  /** Marca de água «RASCUNHO» nas pré-visualizações (os documentos emitidos nunca têm marca de água). */
+  marcaAguaRascunho?: boolean;
 }
 
 export type BlocoDoc =
@@ -62,6 +75,7 @@ export interface DocumentoRenderizado {
   paginacao: boolean;
   rodapeBloco?: BlocoRodape;
   moldura?: { activa: boolean; espessura?: number };
+  filetes?: FileteLivre[];
   marcaAgua?: string;
 }
 
@@ -161,7 +175,9 @@ export function construirDocumento(modelo: DefinicaoModelo, dados: DadosProcurac
     cabecalho: { logotipo: modelo.cabecalho.logotipo, logotipoLarguraCm: modelo.cabecalho.logotipoLarguraCm, filete: modelo.cabecalho.filete, linhas: modelo.cabecalho.linhas.map((l) => ({ ...l, texto: r(l.texto) })) },
     blocos, rodape: r(modelo.rodape.texto), paginacao: modelo.rodape.paginacao,
     rodapeBloco: modelo.rodape.bloco, moldura: modelo.moldura,
-    marcaAgua: opts.preVisualizacao || !dados.numero ? `RASCUNHO${dados.demo ? ' · DEMO' : ''} — SEM VALOR JURÍDICO` : dados.demo ? 'DEMONSTRAÇÃO — SEM VALOR JURÍDICO' : undefined,
+    filetes: modelo.filetes,
+    // Documento emitido: nunca tem marca de água. Pré-visualização: «RASCUNHO», salvo se o modelo a desligar.
+    marcaAgua: (opts.preVisualizacao || !dados.numero) && modelo.marcaAguaRascunho !== false ? 'RASCUNHO — SEM VALOR JURÍDICO' : undefined,
   };
 }
 

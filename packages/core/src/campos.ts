@@ -25,7 +25,7 @@ export interface DefinicaoCampo {
   textoFalso?: string;
 }
 
-export interface Morada { linha: string; codigoPostal?: string; localidade?: string; concelho?: string; provincia?: string; pais?: string }
+export interface Morada { linha: string; codigoPostal?: string; localidade?: string; concelho?: string; distrito?: string; provincia?: string; pais?: string }
 export interface Imovel { tipo?: string; morada: string; freguesia?: string; concelho?: string; artigoMatricial?: string; conservatoria?: string; descricaoPredial?: string }
 export interface Veiculo { marca: string; modelo?: string; matricula: string; quadro?: string }
 export interface Empresa { denominacao: string; nif?: string; sede?: string; matricula?: string }

@@ -9,7 +9,7 @@ import { Rascunho, paraMotor } from './rascunho';
 
 /** Contexto mínimo das partes para pré-visualizar concordâncias sem ir ao servidor. */
 export function contextoPartes(r: Rascunho) {
-  const p = (x: { nome: string; sexo: 'M' | 'F' }) => ({ nome: x.nome, sexo: x.sexo, nomeMaiusculas: x.nome.toUpperCase() });
+  const p = (x: { nome: string; sexo: 'M' | 'F' | null }) => ({ nome: x.nome, sexo: (x.sexo ?? 'M') as 'M' | 'F', nomeMaiusculas: x.nome.toUpperCase() });
   const outorgantes = r.outorgantes.length ? r.outorgantes.map(p) : [{ nome: '', sexo: 'M' as const, nomeMaiusculas: '' }];
   const procuradores = r.procuradores.length ? r.procuradores.map(p) : [{ nome: '', sexo: 'M' as const, nomeMaiusculas: '' }];
   return { outorgantes, outorgante: outorgantes[0], procuradores, procurador: procuradores[0], documento: { dataExtenso: '', numero: 'RASCUNHO' }, posto: {} };

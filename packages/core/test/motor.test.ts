@@ -81,7 +81,8 @@ describe('documento', () => {
     const doc = construirDocumento(MODELO, d, { preVisualizacao: true });
     expect(JSON.stringify(doc.blocos)).toContain('"texto":"[Banco]","marcador":true');
     expect(doc.marcaAgua).toMatch(/RASCUNHO/);
-    expect(construirDocumento(MODELO, dados({ numero: 'X', demo: true })).marcaAgua).toBe('DEMONSTRAÇÃO — SEM VALOR JURÍDICO');
+    expect(construirDocumento(MODELO, dados({ numero: 'X', demo: true })).marcaAgua).toBeUndefined(); // emitido: nunca tem marca de água
+    expect(construirDocumento({ ...MODELO, marcaAguaRascunho: false }, d, { preVisualizacao: true }).marcaAgua).toBeUndefined();
   });
   it('HTML escapa conteúdo introduzido pelo utilizador (XSS)', () => {
     const d = dados(); d.poderes[0].valores = { banco: '<script>alert(1)</script>' };

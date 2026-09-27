@@ -70,6 +70,8 @@ export interface PessoaContexto extends Pessoa {
 import { renderizar } from './template';
 
 export function documentoTexto(doc: DocumentoIdentificacao, tipos: TipoDocumentoIdentificacao[]): string {
+  // Pessoa importada sem documento: fica assinalado na pré-visualização; a emissão é bloqueada pela checklist
+  if (!doc?.numero) return '⟦documento de identificação por indicar⟧';
   const t = tipos.find((x) => x.codigo === doc.tipo);
   if (!t) return `documento n.º ${doc.numero}`;
   return renderizar(t.modelo, {

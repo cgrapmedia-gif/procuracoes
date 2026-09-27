@@ -165,8 +165,10 @@ test.describe.serial('Ciclo completo no browser', () => {
     await expect(previa.locator('body')).toContainText('PROCURAÇÃO');
     await page.getByLabel('Tamanho do texto (pt)').fill('13');
     await expect.poll(() => previa.locator('body').evaluate((b) => getComputedStyle(b).fontSize)).toMatch(/^17\.33/); // 13 pt
-    await page.getByRole('button', { name: 'Cabeçalho' }).click();
-    await expect(page.getByText('Filete do cabeçalho')).toBeVisible();
+    await page.getByRole('button', { name: /Filetes/ }).click();
+    await expect(page.getByText('Fixo: por baixo do cabeçalho')).toBeVisible();
+    await page.getByRole('button', { name: 'Vertical no rodapé' }).click();
+    await expect(page.getByText('Filete livre 1')).toBeVisible();
     await page.getByLabel(/^Nota da alteração/).fill('Letra 13 (teste)');
     await page.getByRole('button', { name: 'Publicar nova versão' }).click();
     await expect(page.getByText(/Nova versão do modelo publicada/)).toBeVisible();

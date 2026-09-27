@@ -7,7 +7,7 @@ import { Casca } from '@/components/Casca';
 import { Icone } from '@/components/Icone';
 import { mensagemErro, useToast } from '@/components/ui';
 
-interface Resultado { loteId: string; total: number; novos: number; duplicados: number; erros: number; resultados: { linha: number; nome: string; documento: string; estado: 'NOVO' | 'DUPLICADO' | 'ERRO'; erros: string[] }[] }
+interface Resultado { loteId: string; total: number; novos: number; duplicados: number; erros: number; resultados: { linha: number; nome: string; documento: string; estado: 'NOVO' | 'DUPLICADO' | 'ERRO'; erros: string[]; avisos?: string[] }[] }
 const MODELO = 'Nome;Sexo;Data de nascimento;Nacionalidade;Naturalidade;Estado civil;Cônjuge;Regime de bens;Profissão;Tipo de documento;BI;Data de emissão;Validade;Vitalício;NIF;Morada;Código postal;Localidade;Concelho;Província;País;Telefone;Email\n'
   + 'Maria Exemplo da Silva;F;15/03/1990;angolana;Município de Baía Farta, Província de Benguela;casada;João Exemplo;comunhão de adquiridos;enfermeira;Bilhete de Identidade;000000000LA000;01/02/2024;31/01/2034;não;;Rua de Exemplo, 66;4000-000;Porto;Porto;;Portugal;+351 900 000 000;maria@exemplo.test\n';
 
@@ -36,10 +36,10 @@ export default function ImportarPessoas() {
         </div>
         <div className="aviso info" style={{ flexDirection: 'column', gap: 4 }}>
           <b>Como preparar o ficheiro</b>
-          <span className="small">Uma pessoa por linha, com cabeçalhos na 1.ª linha (maiúsculas e acentos não importam). Obrigatórios: <b>Nome</b>, <b>Sexo</b> (M/F), <b>Nacionalidade</b>, <b>n.º do documento</b> e <b>Validade</b> (ou «Vitalício: sim»). Datas como 15/03/1990 ou 1990-03-15. Tipo de documento: Bilhete de Identidade (por omissão), Passaporte, Cartão de Cidadão ou Título de Residência.</span>
+          <span className="small">Uma pessoa por linha, com cabeçalhos na 1.ª linha (maiúsculas e acentos não importam). Só o <b>Nome</b> é indispensável: pessoas sem BI, com BI de formato não habitual ou sem sexo entram na mesma, com aviso (completam-se antes de emitir). Para ficheiros com dezenas de milhares de pessoas use o importador em massa (ver guia). Datas como 15/03/1990 ou 1990-03-15. Tipo de documento: Bilhete de Identidade (por omissão), Passaporte, Cartão de Cidadão ou Título de Residência.</span>
         </div>
         <label className="cartao" style={{ padding: 32, borderStyle: 'dashed', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'center' }}>
-          <Icone n="carregar" t={28} /><b style={{ fontWeight: 600 }}>{a ? 'A validar…' : 'Escolher ficheiro'}</b><span className="small muted">Até 5 000 pessoas por lote, 10 MB</span>
+          <Icone n="carregar" t={28} /><b style={{ fontWeight: 600 }}>{a ? 'A validar…' : 'Escolher ficheiro'}</b><span className="small muted">Até 5 000 pessoas por lote, 10 MB (CSV do Excel em português é reconhecido)</span>
           <input type="file" accept=".csv,.xlsx,.json" className="sr" onChange={(e) => e.target.files?.[0] && enviar(e.target.files[0])} />
         </label>
         {erro && <div className="aviso erro" role="alert">{erro}</div>}
@@ -52,7 +52,7 @@ export default function ImportarPessoas() {
           </div>
           <section className="cartao" style={{ overflow: 'hidden' }}>
             <table className="tabela"><thead><tr><th>Linha</th><th>Nome</th><th>Documento</th><th>Resultado</th><th>Detalhe</th></tr></thead>
-              <tbody>{linhas.slice(0, 500).map((l) => <tr key={l.linha}><td>{l.linha}</td><td>{l.nome}</td><td className="mono">{l.documento}</td><td><span className={`estado ${l.estado === 'NOVO' ? 'EMITIDA' : l.estado === 'DUPLICADO' ? 'EM_REVISAO' : 'CANCELADA'}`}>{l.estado === 'NOVO' ? 'Nova' : l.estado === 'DUPLICADO' ? 'Já existe' : 'Erro'}</span></td><td className="small">{l.erros.join('; ')}</td></tr>)}</tbody></table>
+              <tbody>{linhas.slice(0, 500).map((l) => <tr key={l.linha}><td>{l.linha}</td><td>{l.nome}</td><td className="mono">{l.documento}</td><td><span className={`estado ${l.estado === 'NOVO' ? 'EMITIDA' : l.estado === 'DUPLICADO' ? 'EM_REVISAO' : 'CANCELADA'}`}>{l.estado === 'NOVO' ? 'Nova' : l.estado === 'DUPLICADO' ? 'Já existe' : 'Erro'}</span></td><td className="small">{[...l.erros, ...(l.avisos ?? [])].join('; ')}</td></tr>)}</tbody></table>
           </section>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
             <span className="small muted">Só as {res.novos} linhas novas e válidas são importadas. Corrija as linhas com erro no ficheiro e importe-o de novo.</span>

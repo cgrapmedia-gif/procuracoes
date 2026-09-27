@@ -164,3 +164,5 @@ textarea.entrada { height: auto; min-height: 90px; padding: 10px 12px; resize: v
   .side { width: 76px; } .side a span, .side .marca div, .side .grupo, .side .fundo div { display: none; } .side a { justify-content: center; }
 }
 @media (max-width: 760px) { .conteudo { padding: 20px 16px; } .topo { padding: 0 16px; } .construtor { grid-template-columns: 1fr; } .construtor > aside:first-child { display: none; } }
+.btn.perigo { background: var(--carmim); border-color: var(--carmim); color: #fff; }
+.btn.perigo:hover:not(:disabled) { background: #6f1612; }

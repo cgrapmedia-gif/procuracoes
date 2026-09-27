@@ -46,6 +46,12 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
   };
   const fCab = filete(doc.cabecalho.filete, 'bottom');
   if (fCab) paras.push(fCab);
+  // Filetes livres horizontais → parágrafo com borda recolhido à posição/comprimento (os verticais só existem no PDF)
+  const livres = (zona: 'CABECALHO' | 'RODAPE', lado: 'top' | 'bottom') => (doc.filetes ?? []).filter((f) => f.activo && f.zona === zona && f.orientacao === 'HORIZONTAL').map((f) => {
+    const esq = Math.max(0, cm(f.xCm)); const dir = Math.max(0, larguraUtil - esq - cm(f.comprimentoCm));
+    return new Paragraph({ indent: { left: esq, right: dir }, spacing: { before: 40, after: 40, line: 120 }, border: { [lado]: { style: BorderStyle.SINGLE, size: Math.max(2, Math.round(f.espessuraPt * 8)), space: 1, color: f.cor.replace('#', '') } }, children: [] });
+  });
+  paras.push(...livres('CABECALHO', 'bottom'));
   paras.push(new Paragraph({ children: [] }));
 
   const bloco = (b: BlocoDoc): Paragraph[] => {
@@ -81,8 +87,9 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
   if (rb) {
     const img = png(rb.imagem);
     const corBarra = (rb.corBarra ?? '#E30613').replace('#', '');
+    const semBarra = rb.corBarra === 'none';
     const tam = (rb.tamanho ?? 6) * 2;
-    const contactos = rb.contactos.map((c) => new Paragraph({ spacing: { after: 0, line: 240 }, border: { left: { style: BorderStyle.SINGLE, size: 8, space: 6, color: corBarra } }, children: [new TextRun({ text: c, font: 'Calibri', size: tam })] }));
+    const contactos = rb.contactos.map((c) => new Paragraph({ spacing: { after: 0, line: 240 }, ...(semBarra ? {} : { border: { left: { style: BorderStyle.SINGLE, size: 8, space: 6, color: corBarra } } }), children: [new TextRun({ text: c, font: 'Calibri', size: tam })] }));
     const hImg = pxDeCm(rb.imagemAlturaCm ?? 1.1);
     blocoRodape.push(new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -100,7 +107,7 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
   // Modelo do posto: rodapé só no fim do documento (a seguir às assinaturas), sem numeração
   const soNoFim = !!rb?.apenasUltimaPagina;
   const fRod = filete(rb?.filete, 'top');
-  const topoRodape = fRod ? [fRod] : [];
+  const topoRodape = [...(fRod ? [fRod] : []), ...livres('RODAPE', 'top')];
   if (soNoFim) paras.push(new Paragraph({ spacing: { before: 720 }, children: [] }), ...topoRodape, ...blocoRodape);
   const filhosRodape: (Paragraph | Table)[] = soNoFim ? controlo : [...topoRodape, ...blocoRodape, ...controlo];
 

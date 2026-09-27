@@ -14,6 +14,7 @@ const NAV: { rotulo: string; href: string; icone: string; perm?: string; grupo?:
   { rotulo: 'Centro de Poderes', href: '/admin/poderes', icone: 'camadas', perm: 'power.manage', grupo: 'Administração' },
   { rotulo: 'Modelos documentais', href: '/admin/modelos', icone: 'modelo', perm: 'template.read' },
   { rotulo: 'Auditoria', href: '/admin/auditoria', icone: 'escudo', perm: 'audit.read' },
+  { rotulo: 'Manutenção', href: '/admin/manutencao', icone: 'lixo', perm: 'poa.purge' },
   { rotulo: 'Utilizadores', href: '/admin/utilizadores', icone: 'utilizadores', perm: 'user.manage' },
 ];
 

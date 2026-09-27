@@ -75,7 +75,7 @@ export function renderizarHtml(doc: DocumentoRenderizado, opts: OpcoesHtml = {})
   .ass .nome { margin-top: 4pt; }
   .marca { position: fixed; top: 45%; left: 0; right: 0; text-align: center; transform: rotate(-30deg); font-size: 34pt; font-weight: 700; color: rgba(160, 20, 20, .10); pointer-events: none; z-index: 10; font-family: sans-serif; }
   `;
-  const cab = `<header class="cab">${doc.cabecalho.logotipo ? `<img alt="" src="${escapeHtml(doc.cabecalho.logotipo)}" style="${doc.cabecalho.logotipoLarguraCm ? `width:${doc.cabecalho.logotipoLarguraCm}cm;height:auto;` : ''}">` : ''}${doc.cabecalho.linhas.map((l) => `<div style="${l.negrito ? 'font-weight:700;' : ''}${l.tamanho ? `font-size:${l.tamanho}pt;` : ''}${l.fonte ? `font-family:${escapeHtml(l.fonte)};` : ''}">${escapeHtml(l.texto)}</div>`).join('')}${htmlFilete(doc.cabecalho.filete, '5pt 0 0')}</header>`;
+  const cab = `<header class="cab">${doc.cabecalho.logotipo ? `<img alt="" src="${escapeHtml(doc.cabecalho.logotipo)}" style="${doc.cabecalho.logotipoLarguraCm ? `width:${doc.cabecalho.logotipoLarguraCm}cm;height:auto;` : ''}">` : ''}${doc.cabecalho.linhas.map((l) => `<div style="${l.negrito ? 'font-weight:700;' : ''}${l.tamanho ? `font-size:${l.tamanho}pt;` : ''}${l.fonte ? `font-family:${escapeHtml(l.fonte)};` : ''}">${escapeHtml(l.texto)}</div>`).join('')}${htmlFilete(doc.cabecalho.filete, '5pt 0 0')}${htmlFiletesLivres(doc, 'CABECALHO')}</header>`;
   // Moldura: linhas fixas repetem-se em todas as páginas impressas; o cabeçalho (fundo branco) tapa-as na 1.ª página.
   const moldura = doc.moldura?.activa ? `<div class="mold esq"></div><div class="mold dir"></div>` : '';
   const rodapeEcra = !opts.paraImpressao && (doc.rodapeBloco || doc.rodape || doc.paginacao) ? `<footer class="rod-ecra">${htmlRodape(doc)}</footer>` : '';
@@ -90,8 +90,8 @@ export function htmlRodape(doc: DocumentoRenderizado, extra = '', paginas = fals
   // Sem número nem paginação no modelo => sem linha de controlo (o modelo do posto não a tem)
   const comControlo = !!doc.rodape || doc.paginacao;
   const controlo = !comControlo ? '' : [doc.rodape, extra].filter(Boolean).map(escapeHtml).join(' · ') + (doc.paginacao && paginas ? ' · Página <span class="pageNumber"></span> de <span class="totalPages"></span>' : '');
-  const bloco = b ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%">
-    <div style="border-left:1.5px solid ${escapeHtml(b.corBarra ?? '#E30613')};padding-left:6px;font-family:Calibri,'Carlito',Arial,sans-serif;font-size:${t}pt;line-height:1.3;color:#111">${b.contactos.map(escapeHtml).join('<br>')}</div>
+  const bloco = b ? `<div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%">${htmlFiletesLivres(doc, 'RODAPE')}
+    <div style="border-left:${b.corBarra === 'none' ? '0' : `1.5px solid ${escapeHtml(b.corBarra ?? '#E30613')}`};padding-left:6px;font-family:Calibri,'Carlito',Arial,sans-serif;font-size:${t}pt;line-height:1.3;color:#111">${b.contactos.map(escapeHtml).join('<br>')}</div>
     ${b.imagem ? `<img alt="" src="${escapeHtml(b.imagem)}" style="height:${b.imagemAlturaCm ?? 1.1}cm;width:auto">` : ''}
   </div>` : '';
   return `${b?.filete?.activo ? htmlFilete(b.filete, '0 0 5px') : ''}${bloco}${controlo ? `<div style="font-family:Georgia,serif;font-size:6.5pt;color:#666;text-align:center;margin-top:3px">${controlo}</div>` : ''}`;
@@ -101,4 +101,12 @@ export function htmlRodape(doc: DocumentoRenderizado, extra = '', paginas = fals
 export function htmlFilete(f: { activo: boolean; cor: string; espessuraPt: number; larguraPct: number } | undefined, margem: string): string {
   if (!f?.activo) return '';
   return `<div style="height:0;border-top:${f.espessuraPt}pt solid ${escapeHtml(f.cor)};width:${Math.min(100, Math.max(5, f.larguraPct))}%;margin:${margem};margin-left:auto;margin-right:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div>`;
+}
+
+/** Filetes livres de uma zona, posicionados em absoluto (a zona tem position:relative). */
+export function htmlFiletesLivres(doc: DocumentoRenderizado, zona: 'CABECALHO' | 'RODAPE'): string {
+  return (doc.filetes ?? []).filter((f) => f.activo && f.zona === zona).map((f) => {
+    const h = f.orientacao === 'HORIZONTAL';
+    return `<div aria-hidden="true" style="position:absolute;left:${f.xCm}cm;top:${f.yCm}cm;${h ? `width:${f.comprimentoCm}cm;height:0;border-top` : `height:${f.comprimentoCm}cm;width:0;border-left`}:${f.espessuraPt}pt solid ${escapeHtml(f.cor)};-webkit-print-color-adjust:exact;print-color-adjust:exact;z-index:3"></div>`;
+  }).join('');
 }

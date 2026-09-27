@@ -154,10 +154,12 @@ describe('Pessoas', () => {
       + 'Sem Documento;X;;angolana;;;;;;;';
     await request(app.getHttpServer()).post('/api/v1/persons/import/preview').set(auth('operador')).attach('ficheiro', Buffer.from(csv), 'pessoas.csv').expect(403);
     const p = await request(app.getHttpServer()).post('/api/v1/persons/import/preview').set(auth('admin')).attach('ficheiro', Buffer.from(csv), 'pessoas.csv').expect(201);
-    expect({ novos: p.body.novos, duplicados: p.body.duplicados, erros: p.body.erros }).toEqual({ novos: 1, duplicados: 1, erros: 1 });
+    // tolerante: a linha sem documento e sem sexo entra, com avisos
+    expect({ novos: p.body.novos, duplicados: p.body.duplicados, erros: p.body.erros }).toEqual({ novos: 2, duplicados: 1, erros: 0 });
+    expect(p.body.resultados[2].avisos).toEqual(expect.arrayContaining(['sem documento de identificação', 'sexo por indicar']));
     expect(p.body.resultados[0].documento).toBe('BI_AO 900•••099');
     const c = await request(app.getHttpServer()).post(`/api/v1/persons/import/${p.body.loteId}/commit`).set(auth('admin')).expect(201);
-    expect(c.body).toEqual({ criados: 1, ignorados: 0 });
+    expect(c.body).toEqual({ criados: 2, ignorados: 0 });
     const s2 = await request(app.getHttpServer()).get('/api/v1/persons').query({ q: '900000099LA099' }).set(auth('admin')).expect(200);
     expect(s2.body[0].nomeCompleto).toBe('Importada Pelo Ficheiro');
     const { rows } = await pool.query(`select payload from import_batches where id = $1`, [p.body.loteId]);
@@ -233,7 +235,7 @@ describe('Ciclo de vida completo da procuração', () => {
     expect(r.text).toContain('suas bastantes procuradoras');
     expect(r.text).toContain('que deverão actuar sempre conjuntamente');
     expect(r.text).toContain('Kz 1.500.000,00 (um milhão e quinhentos mil kwanzas)');
-    expect(r.text).toContain('RASCUNHO · DEMO — SEM VALOR JURÍDICO');
+    expect(r.text).toContain('RASCUNHO — SEM VALOR JURÍDICO');
     expect(r.text).toContain('a quem confere poderes necessários de representação para');
     expect(r.text).toContain('<strong>BDA – BANCO DEMO ALFA, S.A.</strong>');
     expect(r.text).toContain('class="mold esq"');
@@ -331,5 +333,34 @@ describe('Ciclo de vida completo da procuração', () => {
   it('exportação CSV protegida contra injecção de fórmulas', async () => {
     const r = await request(app.getHttpServer()).get('/api/v1/exports/poas').query({ formato: 'csv' }).set(auth('admin')).expect(200);
     expect(r.text).toContain(numero);
+  });
+});
+
+describe('Pessoas com dados incompletos e eliminação de procurações', () => {
+  it('pessoa sem documento e sem sexo pode ser registada (a emissão é que o exige)', async () => {
+    const r = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('operador')).send({ nomeCompleto: 'Registo Importado Sem Documento', nacionalidade: '' }).expect(201);
+    const p = await request(app.getHttpServer()).get(`/api/v1/persons/${r.body.id}`).set(auth('operador')).expect(200);
+    expect(p.body.documento.numero).toBe('');
+    const bi = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('operador')).send({ nomeCompleto: 'Registo Com BI Estranho', sexo: 'F', nacionalidade: 'angolana', documento: { tipo: 'BI_AO', numero: '752/2024' } }).expect(201);
+    expect(bi.body.id).toBeDefined();
+  });
+  it('só quem tem poa.purge apaga; apagar uma e depois todas; a auditoria fica íntegra', async () => {
+    const lista = await request(app.getHttpServer()).get('/api/v1/poas').query({ limite: 100 }).set(auth('admin')).expect(200);
+    const emitida = lista.body.itens.find((x: { estado: string }) => x.estado !== 'RASCUNHO');
+    await request(app.getHttpServer()).delete(`/api/v1/poas/${emitida.id}`).set(auth('operador')).send({ motivo: 'teste de permissão' }).expect(403);
+    await request(app.getHttpServer()).delete(`/api/v1/poas/${emitida.id}`).set(auth('admin')).send({ motivo: 'x' }).expect(400);
+    const a = await request(app.getHttpServer()).delete(`/api/v1/poas/${emitida.id}`).set(auth('admin')).send({ motivo: 'Documento de teste' }).expect(200);
+    expect(a.body.apagadas).toBe(1);
+    await request(app.getHttpServer()).get(`/api/v1/poas/${emitida.id}`).set(auth('admin')).expect(404);
+    // fora da purga, os triggers continuam a impedir apagar uma emitida directamente na base
+    const outra = lista.body.itens.find((x: { estado: string; id: string }) => x.estado !== 'RASCUNHO' && x.id !== emitida.id);
+    if (outra) await expect(pool.query('delete from powers_of_attorney where id = $1', [outra.id])).rejects.toThrow(/não pode ser apagada/);
+    await request(app.getHttpServer()).post('/api/v1/admin/purge-poas').set(auth('admin')).send({ confirmacao: 'sim', motivo: 'limpeza de testes' }).expect(400);
+    const t = await request(app.getHttpServer()).post('/api/v1/admin/purge-poas').set(auth('admin')).send({ confirmacao: 'APAGAR TUDO', motivo: 'limpeza de testes', reiniciarNumeracao: true }).expect(201);
+    expect(t.body.apagadas).toBeGreaterThan(0);
+    const vazio = await request(app.getHttpServer()).get('/api/v1/poas').set(auth('admin')).expect(200);
+    expect(vazio.body.total).toBe(0);
+    const v = await request(app.getHttpServer()).get('/api/v1/audit/verify').set(auth('admin')).expect(200);
+    expect(v.body.integra).toBe(true);
   });
 });

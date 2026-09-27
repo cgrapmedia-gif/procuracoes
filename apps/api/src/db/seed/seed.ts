@@ -24,7 +24,7 @@ export const PERMISSOES: [string, string][] = [
   ['power.read', 'Consultar catálogo de poderes'], ['power.manage', 'Criar/editar poderes (rascunho)'], ['power.publish', 'Publicar versões de poderes'], ['power.import', 'Importar poderes'],
   ['person.read', 'Consultar pessoas'], ['person.manage', 'Criar/editar pessoas'], ['person.import', 'Importar pessoas em massa (CSV/Excel)'],
   ['poa.read', 'Consultar procurações'], ['poa.create', 'Criar procurações'], ['poa.edit', 'Editar rascunhos'], ['poa.submit', 'Submeter para revisão'], ['poa.validate', 'Validar/devolver'],
-  ['poa.issue', 'Emitir e registar assinatura'], ['poa.issue_direct', 'Emitir directamente, sem revisão por terceiros'], ['poa.cancel', 'Cancelar'], ['poa.archive', 'Arquivar'], ['poa.custom_power', 'Usar poderes personalizados'],
+  ['poa.issue', 'Emitir e registar assinatura'], ['poa.issue_direct', 'Emitir directamente, sem revisão por terceiros'], ['poa.cancel', 'Cancelar'], ['poa.purge', 'Apagar procurações e os respectivos documentos (irreversível)'], ['poa.archive', 'Arquivar'], ['poa.custom_power', 'Usar poderes personalizados'],
   ['document.download', 'Descarregar documentos'], ['template.read', 'Consultar modelos'], ['template.manage', 'Editar modelos'], ['template.publish', 'Publicar modelos'],
   ['entity.create', 'Acrescentar entidades (bancos, conservatórias…) durante a redacção'],
   ['catalog.manage', 'Gerir entidades, tipos e modelos institucionais'], ['user.manage', 'Gerir utilizadores e perfis'], ['audit.read', 'Consultar auditoria'], ['export.run', 'Exportar dados'],

@@ -43,6 +43,20 @@
       "when": 1790452845649,
       "tag": "0005_importacao_pessoas",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790528090301,
+      "tag": "0006_pessoas_sem_documento",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790528110990,
+      "tag": "0007_apagar_procuracoes",
+      "breakpoints": true
     }
   ]
 }
