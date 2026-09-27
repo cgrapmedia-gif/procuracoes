@@ -247,6 +247,7 @@ export class PoaService {
     const cond: SQL[] = [eq(P.orgId, u.orgId)];
     if (q.estado) cond.push(eq(P.status, q.estado));
     if (q.tipo) cond.push(eq(s.poaTypes.code, q.tipo));
+    if (q.minhas === 'true') cond.push(eq(P.createdBy, u.id));
     if (q.numero) cond.push(ilike(P.number, `%${q.numero.replace(/[%_]/g, '')}%`));
     if (q.de) cond.push(gte(P.actDate, q.de));
     if (q.ate) cond.push(lte(P.actDate, q.ate));

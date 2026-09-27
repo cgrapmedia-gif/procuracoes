@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { and, asc, desc, eq, isNull, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { DefinicaoModelo, construirDocumento, renderizar } from '@proc/core';
@@ -8,6 +8,7 @@ import { Actor, Requer, Utilizador, ZodPipe } from '../common/http';
 import { Db, InjectDb } from '../db/db.module';
 import * as s from '../db/schema';
 
+const Organizacao = z.object({ nome: z.string().trim().min(3).max(200), nomeCompleto: z.string().trim().min(3).max(300), morada: z.string().trim().min(5).max(500), cidade: z.string().trim().min(2).max(100) });
 const Oficiante = z.object({ nome: z.string().min(3).max(200), cargo: z.string().min(3).max(120), utilizadorId: z.string().uuid().optional() });
 export const TIPOS_ENTIDADE = ['BANCO', 'CONSERVATORIA', 'TRIBUNAL', 'SEGURANCA_SOCIAL', 'ADMIN_TRIBUTARIA', 'OPERADORA', 'SEGURADORA', 'EMPRESA', 'SERVICO_PUBLICO', 'OUTRA'] as const;
 const Entidade = z.object({ tipo: z.enum(TIPOS_ENTIDADE), nome: z.string().trim().min(3, 'Indique o nome oficial completo').max(200), sigla: z.string().max(40).optional(), nif: z.string().max(20).optional() });
@@ -21,7 +22,37 @@ export class CatalogController {
   tipos() { return this.db.select({ id: s.poaTypes.id, codigo: s.poaTypes.code, nome: s.poaTypes.name, descricao: s.poaTypes.description, sugeridos: s.poaTypes.suggestedPowerCodes, demo: s.poaTypes.isDemo }).from(s.poaTypes).where(eq(s.poaTypes.active, true)).orderBy(asc(s.poaTypes.sort)); }
 
   @Get('officers') @Requer('poa.read')
-  oficiantes(@Actor() u: Utilizador) { return this.db.select({ id: s.officers.id, nome: s.officers.name, cargo: s.officers.title }).from(s.officers).where(and(eq(s.officers.orgId, u.orgId), eq(s.officers.active, true))); }
+  oficiantes(@Actor() u: Utilizador, @Query('todos') todos?: string) {
+    return this.db.select({ id: s.officers.id, nome: s.officers.name, cargo: s.officers.title, activo: s.officers.active }).from(s.officers)
+      .where(and(eq(s.officers.orgId, u.orgId), todos === 'true' ? undefined : eq(s.officers.active, true))).orderBy(asc(s.officers.name));
+  }
+
+  @Put('officers/:id') @Requer('catalog.manage')
+  editarOficiante(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(Oficiante.partial().extend({ activo: z.boolean().optional() }))) b: { nome?: string; cargo?: string; activo?: boolean }, @Actor() u: Utilizador) {
+    return this.db.transaction(async (tx) => {
+      const [o] = await tx.update(s.officers).set({ ...(b.nome ? { name: b.nome } : {}), ...(b.cargo ? { title: b.cargo } : {}), ...(b.activo !== undefined ? { active: b.activo } : {}) }).where(and(eq(s.officers.id, id), eq(s.officers.orgId, u.orgId))).returning();
+      if (!o) throw new NotFoundException();
+      await this.audit.log(tx, u, 'OFICIANTE_EDITAR', 'officer', id, b);
+      return o;
+    });
+  }
+
+  /** Dados do posto usados no documento (nome no cabeçalho, nome completo e morada no texto). */
+  @Get('organization') @Requer('poa.read')
+  async organizacao(@Actor() u: Utilizador) {
+    const [o] = await this.db.select({ nome: s.organizations.name, nomeCompleto: s.organizations.fullName, morada: s.organizations.address, cidade: s.organizations.city }).from(s.organizations).where(eq(s.organizations.id, u.orgId));
+    return o;
+  }
+
+  @Put('organization') @Requer('catalog.manage')
+  editarOrganizacao(@Body(new ZodPipe(Organizacao)) b: z.infer<typeof Organizacao>, @Actor() u: Utilizador) {
+    return this.db.transaction(async (tx) => {
+      const [antes] = await tx.select().from(s.organizations).where(eq(s.organizations.id, u.orgId));
+      await tx.update(s.organizations).set({ name: b.nome, fullName: b.nomeCompleto, address: b.morada, city: b.cidade }).where(eq(s.organizations.id, u.orgId));
+      await this.audit.log(tx, u, 'POSTO_EDITAR', 'organization', u.orgId, { de: { nome: antes.name, nomeCompleto: antes.fullName, morada: antes.address }, para: b });
+      return b;
+    });
+  }
 
   @Post('officers') @Requer('catalog.manage')
   criarOficiante(@Body(new ZodPipe(Oficiante)) b: z.infer<typeof Oficiante>, @Actor() u: Utilizador) {

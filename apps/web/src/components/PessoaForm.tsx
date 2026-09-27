@@ -16,7 +16,7 @@ const VAZIA: PessoaCompleta = { nomeCompleto: '', sexo: 'F', nacionalidade: 'ang
 const ESTADOS_CIVIS = [['SOLTEIRO', 'Solteiro(a)'], ['CASADO', 'Casado(a)'], ['DIVORCIADO', 'Divorciado(a)'], ['VIUVO', 'Viúvo(a)'], ['SEPARADO', 'Separado(a) judicialmente'], ['UNIAO_FACTO', 'União de facto']];
 
 /** Gaveta de criação/edição de pessoa. Detecta duplicados pelo documento de identificação (409 do servidor) e oferece reutilizar. */
-export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar }: { aberta: boolean; fechar: () => void; pessoaId?: string; aoGuardar: (p: { id: string; nomeCompleto: string; sexo: 'M' | 'F' }) => void }) {
+export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial }: { aberta: boolean; fechar: () => void; pessoaId?: string; nomeInicial?: string; aoGuardar: (p: { id: string; nomeCompleto: string; sexo: 'M' | 'F' }) => void }) {
   const [p, setP] = useState<PessoaCompleta>(VAZIA);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState('');
@@ -26,8 +26,8 @@ export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar }: { aberta: 
   useEffect(() => {
     if (!aberta) return;
     setErros({}); setErroGeral(''); setExistente(null);
-    if (pessoaId) api<PessoaCompleta>(`/persons/${pessoaId}`).then((x) => setP({ ...VAZIA, ...x, morada: x.morada ?? VAZIA.morada })); else setP(VAZIA);
-  }, [aberta, pessoaId]);
+    if (pessoaId) api<PessoaCompleta>(`/persons/${pessoaId}`).then((x) => setP({ ...VAZIA, ...x, morada: x.morada ?? VAZIA.morada })); else setP({ ...VAZIA, nomeCompleto: nomeInicial ?? '' });
+  }, [aberta, pessoaId, nomeInicial]);
   const set = (patch: Partial<PessoaCompleta>) => setP((x) => ({ ...x, ...patch }));
   const setDoc = (patch: Partial<PessoaCompleta['documento']>) => setP((x) => ({ ...x, documento: { ...x.documento, ...patch } }));
   const setMor = (patch: Partial<NonNullable<PessoaCompleta['morada']>>) => setP((x) => ({ ...x, morada: { linha: '', ...x.morada, ...patch } }));

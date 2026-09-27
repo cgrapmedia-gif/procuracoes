@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -20,10 +21,11 @@ export default function Pessoas() {
     <Casca migalhas={['Pessoas']}>
       <main className="conteudo">
         <div className="cabecalho"><div><h1>Pessoas</h1><span className="muted">Outorgantes, procuradores e outras pessoas referidas nas procurações.</span></div>
+          {pode('person.import') && <Link className="btn" href="/pessoas/importar"><Icone n="carregar" t={16} />Importar</Link>}
           {pode('person.manage') && <button className="btn primario" onClick={() => setG({ aberta: true })}><Icone n="mais" t={16} />Nova pessoa</button>}</div>
         <section className="cartao">
           <form style={{ display: 'flex', gap: 12, padding: 16 }} onSubmit={(e) => { e.preventDefault(); setBusca(q.trim()); }}>
-            <label className="campo" style={{ flex: 1 }}><span className="sr">Pesquisar pessoas</span><input className="entrada" type="search" placeholder="Nome (com ou sem acentos), NIF ou n.º de documento exacto" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+            <label className="campo" style={{ flex: 1 }}><span className="sr">Pesquisar pessoas</span><input className="entrada" type="search" placeholder="Nome (palavras em qualquer ordem, com ou sem acentos), NIF ou n.º de documento" value={q} onChange={(e) => setQ(e.target.value)} /></label>
             <button className="btn escuro">Pesquisar</button>
           </form>
           {lista.isLoading ? <div style={{ padding: 20 }}><Giro /></div> : (

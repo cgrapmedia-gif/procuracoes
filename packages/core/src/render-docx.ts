@@ -38,16 +38,24 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
     paras.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ type: 'png', data: logo.data, transformation: { width: w, height: Math.round((w * logo.h) / logo.w) } })] }));
   }
   for (const l of doc.cabecalho.linhas) paras.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: l.texto, bold: l.negrito, font: l.fonte?.split(',')[0].replace(/['"]/g, '').trim() || t.fonte, size: (l.tamanho ?? t.tamanho) * 2 })] }));
+  // Filete do cabeçalho: parágrafo vazio com borda inferior, recolhido para a largura pedida
+  const filete = (f: { activo: boolean; cor: string; espessuraPt: number; larguraPct: number } | undefined, lado: 'top' | 'bottom') => {
+    if (!f?.activo) return null;
+    const recuo = Math.round((larguraUtil * (100 - Math.min(100, Math.max(5, f.larguraPct)))) / 200);
+    return new Paragraph({ indent: { left: recuo, right: recuo }, spacing: { before: 60, after: 60, line: 120 }, border: { [lado]: { style: BorderStyle.SINGLE, size: Math.max(2, Math.round(f.espessuraPt * 8)), space: 1, color: f.cor.replace('#', '') } }, children: [] });
+  };
+  const fCab = filete(doc.cabecalho.filete, 'bottom');
+  if (fCab) paras.push(fCab);
   paras.push(new Paragraph({ children: [] }));
 
   const bloco = (b: BlocoDoc): Paragraph[] => {
     switch (b.tipo) {
       case 'titulo':
-        if (!b.preencher) return [new Paragraph({ border, alignment: AlignmentType.CENTER, spacing, children: [new TextRun({ text: b.texto, bold: true, font: t.fonte, size })] })];
+        if (!b.preencher) return [new Paragraph({ border, alignment: AlignmentType.CENTER, spacing, children: [new TextRun({ text: b.texto, bold: true, font: t.fonte, size: (t.tamanhoTitulo ?? t.tamanho) * 2 })] })];
         return [new Paragraph({
           border, spacing,
           tabStops: [{ type: TabStopType.CENTER, position: Math.round(larguraUtil / 2), leader: 'hyphen' }, { type: TabStopType.RIGHT, position: larguraUtil, leader: 'hyphen' }],
-          children: [new TextRun({ text: `\t${b.texto}\t`, bold: true, font: t.fonte, size })],
+          children: [new TextRun({ text: `\t${b.texto}\t`, bold: true, font: t.fonte, size: (t.tamanhoTitulo ?? t.tamanho) * 2 })],
         })];
       case 'paragrafo':
         return [new Paragraph({ border, alignment: AL[b.alinhamento], tabStops: b.preencher ? tabFill : undefined, spacing: { ...spacing, before: b.espacoAntes ? b.espacoAntes * 20 : undefined }, children: [...b.runs.map(tr), ...(b.preencher ? [fill()] : [])] })];
@@ -58,7 +66,7 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
         return b.itens.flatMap((i, idx) => {
           const al = i.alinhamento === 'ESQUERDA' ? AlignmentType.LEFT : AlignmentType.CENTER;
           return [
-            new Paragraph({ border, alignment: al, keepNext: true, keepLines: true, spacing: { before: idx === 0 ? 480 : 360 }, children: [new TextRun({ text: i.rotulo, bold: true, font: t.fonte, size })] }),
+            new Paragraph({ border, alignment: al, keepNext: true, keepLines: true, spacing: { before: idx === 0 ? 480 : Math.round((t.espacoAssinaturas ?? 18) * 20) }, children: [new TextRun({ text: i.rotulo, bold: true, font: t.fonte, size })] }),
             new Paragraph({ border, alignment: al, keepNext: !!i.nome || idx < b.itens.length - 1, spacing: { before: 480 }, children: [new TextRun({ text: '_'.repeat(i.alinhamento === 'ESQUERDA' ? 26 : 38), font: t.fonte, size })] }),
             ...(i.nome ? [new Paragraph({ border, alignment: al, keepNext: idx < b.itens.length - 1, children: [new TextRun({ text: i.nome, bold: true, font: t.fonte, size })] })] : []),
           ];
@@ -91,8 +99,10 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
   ] })] : [];
   // Modelo do posto: rodapé só no fim do documento (a seguir às assinaturas), sem numeração
   const soNoFim = !!rb?.apenasUltimaPagina;
-  if (soNoFim) paras.push(new Paragraph({ spacing: { before: 720 }, children: [] }), ...blocoRodape);
-  const filhosRodape: (Paragraph | Table)[] = soNoFim ? controlo : [...blocoRodape, ...controlo];
+  const fRod = filete(rb?.filete, 'top');
+  const topoRodape = fRod ? [fRod] : [];
+  if (soNoFim) paras.push(new Paragraph({ spacing: { before: 720 }, children: [] }), ...topoRodape, ...blocoRodape);
+  const filhosRodape: (Paragraph | Table)[] = soNoFim ? controlo : [...topoRodape, ...blocoRodape, ...controlo];
 
   const d = new Document({
     creator: 'Plataforma de Procurações', title: doc.rodape,

@@ -115,6 +115,9 @@ textarea.entrada { height: auto; min-height: 90px; padding: 10px 12px; resize: v
 .etapas .n { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--linha-forte); display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--folha); }
 .etapas .feito .n { background: var(--tinta); border-color: var(--tinta); color: #FFFFFF; }
 .etapas .feito a { color: var(--tinta); }
+.etapas .falta .n { background: var(--ambar-suave); border-color: var(--ambar); color: var(--ambar); }
+.etapas .falta a { color: var(--ambar); }
+.dica { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--mudo); }
 .etapas .actual .n { background: var(--carmim); border-color: var(--carmim); color: #FFFFFF; }
 .etapas .actual a { color: var(--tinta); font-weight: 600; }
 .etapas .traco { width: 18px; height: 1px; background: var(--linha-forte); }

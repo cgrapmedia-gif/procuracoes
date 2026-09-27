@@ -20,6 +20,8 @@ export type BlocoModelo =
 
 export interface ItemAssinatura { rotulo: string; nome?: string; alinhamento?: 'ESQUERDA' | 'CENTRO' }
 export interface LinhaCabecalho { texto: string; negrito?: boolean; tamanho?: number; fonte?: string }
+/** Linha horizontal decorativa (ex.: filete vermelho do papel timbrado). */
+export interface Filete { activo: boolean; cor: string; espessuraPt: number; larguraPct: number }
 /** Bloco de rodapé institucional: contactos à esquerda (com barra de cor) e imagem à direita. */
 export interface BlocoRodape {
   contactos: string[]; corBarra?: string; imagem?: string; imagemAlturaCm?: number; tamanho?: number;
@@ -27,14 +29,16 @@ export interface BlocoRodape {
   apenasUltimaPagina?: boolean;
   /** Altura reservada no fundo da última página para o rodapé (cm). */
   alturaReservadaCm?: number;
+  /** Filete por cima do rodapé. */
+  filete?: Filete;
 }
 
 export interface DefinicaoModelo {
   pagina: { formato: 'A4'; margens: { topo: number; direita: number; fundo: number; esquerda: number } }; // cm
-  tipografia: { fonte: string; fontesAlternativas?: string; tamanho: number; entrelinha: number; espacoParagrafo?: number };
+  tipografia: { fonte: string; fontesAlternativas?: string; tamanho: number; entrelinha: number; espacoParagrafo?: number; tamanhoTitulo?: number; espacoAssinaturas?: number };
   preenchimento: { activo: boolean; caracter: '-' | '.' | '_' };
   poderes: ConfigPoderes;
-  cabecalho: { logotipo?: string; logotipoLarguraCm?: number; linhas: LinhaCabecalho[] };
+  cabecalho: { logotipo?: string; logotipoLarguraCm?: number; linhas: LinhaCabecalho[]; filete?: Filete };
   blocos: BlocoModelo[];
   rodape: { texto: string; paginacao: boolean; bloco?: BlocoRodape };
   /** Linhas verticais à esquerda e à direita do texto em todas as páginas (espessura em pt). */
@@ -52,7 +56,7 @@ export interface DocumentoRenderizado {
   pagina: DefinicaoModelo['pagina'];
   tipografia: DefinicaoModelo['tipografia'];
   preenchimento: DefinicaoModelo['preenchimento'];
-  cabecalho: { logotipo?: string; logotipoLarguraCm?: number; linhas: LinhaCabecalho[] };
+  cabecalho: { logotipo?: string; logotipoLarguraCm?: number; linhas: LinhaCabecalho[]; filete?: Filete };
   blocos: BlocoDoc[];
   rodape: string;
   paginacao: boolean;
@@ -154,7 +158,7 @@ export function construirDocumento(modelo: DefinicaoModelo, dados: DadosProcurac
   }
   return {
     pagina: modelo.pagina, tipografia: modelo.tipografia, preenchimento: modelo.preenchimento,
-    cabecalho: { logotipo: modelo.cabecalho.logotipo, logotipoLarguraCm: modelo.cabecalho.logotipoLarguraCm, linhas: modelo.cabecalho.linhas.map((l) => ({ ...l, texto: r(l.texto) })) },
+    cabecalho: { logotipo: modelo.cabecalho.logotipo, logotipoLarguraCm: modelo.cabecalho.logotipoLarguraCm, filete: modelo.cabecalho.filete, linhas: modelo.cabecalho.linhas.map((l) => ({ ...l, texto: r(l.texto) })) },
     blocos, rodape: r(modelo.rodape.texto), paginacao: modelo.rodape.paginacao,
     rodapeBloco: modelo.rodape.bloco, moldura: modelo.moldura,
     marcaAgua: opts.preVisualizacao || !dados.numero ? `RASCUNHO${dados.demo ? ' · DEMO' : ''} — SEM VALOR JURÍDICO` : dados.demo ? 'DEMONSTRAÇÃO — SEM VALOR JURÍDICO' : undefined,

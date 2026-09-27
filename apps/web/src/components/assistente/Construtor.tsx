@@ -59,7 +59,7 @@ export function Construtor({ r, actualizar, catalogo, categorias, tipoCodigo, ed
   const doTipo = catalogo.filter((p) => (clausulas ? p.tipo === 'CLAUSULA' : p.tipo === 'PODER') && (!p.tiposPermitidos.length || p.tiposPermitidos.includes(tipoCodigo)));
   const cats = categorias.filter((c) => doTipo.some((p) => p.categoria === c.code));
   const [cat, setCat] = useState<string>(cats[0]?.code ?? '');
-  const [q, setQ] = useState(''); const [fav, setFav] = useState(false);
+  const [q, setQ] = useState(''); const [fav, setFav] = useState(false); const [usados, setUsados] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
   const [pers, setPers] = useState<{ aberta: boolean; nome: string; texto: string }>({ aberta: false, nome: '', texto: '' });
   const porCodigo = useMemo(() => new Map(catalogo.map((p) => [p.codigo, p])), [catalogo]);
@@ -69,7 +69,11 @@ export function Construtor({ r, actualizar, catalogo, categorias, tipoCodigo, ed
 
   const termo = q.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
-  const lista = doTipo.filter((p) => (termo ? norm(`${p.nome} ${p.codigo} ${p.descricao ?? ''} ${p.texto}`).includes(termo) : fav ? p.favorito : p.categoria === cat));
+  // Pesquisa por todas as palavras (qualquer ordem), no nome, código, descrição e texto
+  const palavras = termo.split(/\s+/).filter(Boolean);
+  const maisUsados = [...doTipo].filter((p) => p.utilizacoes > 0).sort((a, b) => b.utilizacoes - a.utilizacoes).slice(0, 12);
+  const lista = termo ? doTipo.filter((p) => { const t = norm(`${p.nome} ${p.codigo} ${p.descricao ?? ''} ${p.texto}`); return palavras.every((w) => t.includes(w)); })
+    : usados ? maisUsados : fav ? doTipo.filter((p) => p.favorito) : doTipo.filter((p) => p.categoria === cat);
   const detalhe = sel ? porCodigo.get(sel) : lista[0];
 
   const motor = paraMotor(r.itens, porCodigo);
@@ -98,8 +102,9 @@ export function Construtor({ r, actualizar, catalogo, categorias, tipoCodigo, ed
     <div className="construtor">
       <aside aria-label="Categorias">
         <span className="small muted" style={{ padding: '4px 12px 8px' }}>Categorias</span>
-        <button className="cat" aria-pressed={fav && !termo} onClick={() => { setFav(true); setQ(''); }}><span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Icone n="estrela" t={15} cor="var(--ouro)" />Favoritos</span></button>
-        {cats.map((c) => <button key={c.code} className="cat" aria-pressed={!fav && !termo && cat === c.code} onClick={() => { setCat(c.code); setFav(false); setQ(''); setSel(null); }}><span>{c.name}</span><small>{doTipo.filter((p) => p.categoria === c.code).length}</small></button>)}
+        {maisUsados.length > 0 && <button className="cat" aria-pressed={usados && !termo} onClick={() => { setUsados(true); setFav(false); setQ(''); }}><span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Icone n="historico" t={15} />Mais usados</span></button>}
+        <button className="cat" aria-pressed={fav && !usados && !termo} onClick={() => { setFav(true); setUsados(false); setQ(''); }}><span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Icone n="estrela" t={15} cor="var(--ouro)" />Favoritos</span></button>
+        {cats.map((c) => <button key={c.code} className="cat" aria-pressed={!fav && !usados && !termo && cat === c.code} onClick={() => { setCat(c.code); setFav(false); setUsados(false); setQ(''); setSel(null); }}><span>{c.name}</span><small>{doTipo.filter((p) => p.categoria === c.code).length}</small></button>)}
       </aside>
 
       <section className="catalogo" aria-label="Catálogo">
@@ -148,7 +153,7 @@ export function Construtor({ r, actualizar, catalogo, categorias, tipoCodigo, ed
           {itens.length === 0 && <Vazio>{clausulas ? 'Sem cláusulas finais. São opcionais.' : 'Adicione poderes do catálogo. A ordem aqui será exactamente a do documento.'}</Vazio>}
           <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={fimArrasto}>
             <SortableContext items={itens.map((i) => i.uid)} strategy={verticalListSortingStrategy}>
-              {itens.map((i, idx) => <Escolhido key={i.uid} item={i} n={idx + 1} total={itens.length} editavel={editavel} problema={comProblema.has(i.uid)} remover={() => remover(i.uid)} abrir={() => { setSel(i.codigo); setQ(''); const c = porCodigo.get(i.codigo); if (c) { setCat(c.categoria); setFav(false); } }} mover={(d) => { const j = idx + d; if (j >= 0 && j < itens.length) reordenar(arrayMove(itens, idx, j)); }} />)}
+              {itens.map((i, idx) => <Escolhido key={i.uid} item={i} n={idx + 1} total={itens.length} editavel={editavel} problema={comProblema.has(i.uid)} remover={() => remover(i.uid)} abrir={() => { setSel(i.codigo); setQ(''); const c = porCodigo.get(i.codigo); if (c) { setCat(c.categoria); setFav(false); setUsados(false); } }} mover={(d) => { const j = idx + d; if (j >= 0 && j < itens.length) reordenar(arrayMove(itens, idx, j)); }} />)}
             </SortableContext>
           </DndContext>
           {problemas.length > 0 && (

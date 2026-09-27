@@ -17,6 +17,7 @@ import { PdfService } from './documents/pdf.service';
 import { StorageService } from './documents/storage.service';
 import { PersonsController } from './persons/persons.controller';
 import { PersonsService } from './persons/persons.service';
+import { PersonsImportService } from './persons/persons-import.service';
 import { EmissaoService } from './poa/emissao.service';
 import { PoaController } from './poa/poa.controller';
 import { PoaService } from './poa/poa.service';
@@ -32,7 +33,7 @@ import { PowersService } from './powers/powers.service';
   ],
   controllers: [HealthController, AuthController, PowersController, PersonsController, CatalogController, PoaController, DashboardController, ...AdminModuleControllers],
   providers: [
-    AuthService, AuditService, CryptoService, PowersService, ImportService, PersonsService, PoaService, EmissaoService, PdfService, StorageService,
+    AuthService, AuditService, CryptoService, PowersService, ImportService, PersonsService, PersonsImportService, PoaService, EmissaoService, PdfService, StorageService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ErrosFilter },

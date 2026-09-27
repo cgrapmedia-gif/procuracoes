@@ -49,16 +49,34 @@ export class PersonsService {
     };
   }
 
-  /** Pesquisa por nome (sem acentos, parcial), NIF ou n.º de documento (exactos, via índice cego). */
+  /**
+   * Pesquisa de pessoas mais eficaz:
+   *  - nome: todas as palavras escritas têm de aparecer, em qualquer ordem, sem acentos ("maria silva" encontra "Maria da Conceição Silva");
+   *  - erros de escrita: se não houver resultados exactos, procura nomes semelhantes (trigramas: "cawaia" encontra "Cawaya");
+   *  - NIF e n.º de documento: correspondência exacta, sem espaços nem maiúsculas (índice cego — os números estão cifrados);
+   *  - resultados ordenados pela semelhança ao texto pesquisado.
+   */
   async pesquisar(u: Utilizador, q?: string, limite = 20) {
-    const cond = [eq(persons.orgId, u.orgId)];
-    if (q?.trim()) {
-      const t = q.trim();
-      cond.push(or(ilike(persons.searchName, `%${normalizarNome(t).replace(/[%_]/g, '\\$&')}%`), eq(persons.nifBidx, this.crypto.blindIndex(t, 'nif')!), eq(persons.docNumberBidx, this.crypto.blindIndex(t, 'doc')!))!);
-    }
-    const rows = await this.db.select().from(persons).where(and(...cond))
-      .orderBy(q?.trim() ? sql`similarity(${persons.searchName}, ${normalizarNome(q ?? '')}) desc` : desc(persons.updatedAt)).limit(Math.min(limite, 50));
-    return rows.map((r) => { const p = this.paraDominio(r); return { id: p.id, nomeCompleto: p.nomeCompleto, sexo: p.sexo, nacionalidade: p.nacionalidade, documento: { tipo: p.documento.tipo, numero: mascarar(p.documento.numero), validade: p.documento.validade, vitalicio: p.documento.vitalicio }, demo: p.demo }; });
+    const max = Math.min(limite, 50);
+    const base = eq(persons.orgId, u.orgId);
+    const t = q?.trim() ?? '';
+    const mapear = (rows: (typeof persons.$inferSelect)[]) => rows.map((r) => {
+      const p = this.paraDominio(r);
+      return { id: p.id, nomeCompleto: p.nomeCompleto, sexo: p.sexo, nacionalidade: p.nacionalidade, dataNascimento: p.dataNascimento, naturalidade: p.naturalidade, documento: { tipo: p.documento.tipo, numero: mascarar(p.documento.numero), validade: p.documento.validade, vitalicio: p.documento.vitalicio }, demo: p.demo };
+    });
+    if (!t) return mapear(await this.db.select().from(persons).where(base).orderBy(desc(persons.updatedAt)).limit(max));
+    const norm = normalizarNome(t);
+    const palavras = norm.split(' ').filter((w) => w.length >= 2).map((w) => w.replace(/[%_\\]/g, ''));
+    const exactos = [eq(persons.nifBidx, this.crypto.blindIndex(t, 'nif')!), eq(persons.docNumberBidx, this.crypto.blindIndex(t, 'doc')!)];
+    const porNome = palavras.length ? and(...palavras.map((w) => ilike(persons.searchName, `%${w}%`))) : undefined;
+    const rows = await this.db.select().from(persons).where(and(base, or(...exactos, ...(porNome ? [porNome] : []))))
+      .orderBy(sql`similarity(${persons.searchName}, ${norm}) desc`, desc(persons.updatedAt)).limit(max);
+    if (rows.length || norm.length < 3) return mapear(rows);
+    // Sem resultados: tolera erros de escrita
+    const semelhantes = await this.db.select().from(persons)
+      .where(and(base, sql`(similarity(${persons.searchName}, ${norm}) > 0.25 or word_similarity(${norm}, ${persons.searchName}) > 0.45)`))
+      .orderBy(sql`greatest(similarity(${persons.searchName}, ${norm}), word_similarity(${norm}, ${persons.searchName})) desc`).limit(max);
+    return mapear(semelhantes).map((x) => ({ ...x, aproximado: true }));
   }
 
   async obter(id: string, u: Utilizador, tx: Tx = this.db) {

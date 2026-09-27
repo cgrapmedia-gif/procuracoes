@@ -14,6 +14,8 @@ import { INSIGNIA_PNG, RODAPE_GOVERNO_PNG } from './imagens-posto';
  */
 const O = (ms: string, fs: string, mp: string, fp: string) => `{{flex outorgantes "${ms}" "${fs}" "${mp}" "${fp}"}}`;
 const T = '-----'; // separador entre troços do texto corrido
+/** Filete vermelho do papel timbrado (cabeçalho e rodapé). Largura, cor e espessura ajustáveis no editor de modelos. */
+const FILETE_VERMELHO = { activo: true, cor: '#E30613', espessuraPt: 1, larguraPct: 100 };
 
 export const CONTACTOS_POSTO = [
   'Rua Dr. Carlos Cal Brandão 132/138',
@@ -31,13 +33,14 @@ export const modeloConsular = (modo: 'PROSA' | 'LISTA'): DefinicaoModelo => {
 
   return {
     pagina: { formato: 'A4', margens: { topo: 1, direita: 2.27, fundo: 1.2, esquerda: 2.54 } },
-    tipografia: { fonte: 'Merriweather', tamanho: 12, entrelinha: 1.5, espacoParagrafo: 0 },
+    tipografia: { fonte: 'Merriweather', tamanho: 12, entrelinha: 1.5, espacoParagrafo: 0, tamanhoTitulo: 12, espacoAssinaturas: 22 },
     preenchimento: { activo: true, caracter: '-' },
     moldura: { activa: true, espessura: 1.5 },
     poderes: modo === 'PROSA' ? { modo: 'PROSA', separador: '; ', ultimoSeparador: '; e ' } : { modo: 'LISTA', numeracao: 'a)' },
     cabecalho: {
       logotipo: INSIGNIA_PNG,
       logotipoLarguraCm: 2.05,
+      filete: FILETE_VERMELHO,
       linhas: [
         { texto: 'REPÚBLICA DE ANGOLA', negrito: true, tamanho: 9, fonte: "'Pragati Narrow', 'Arial Narrow', Arial, sans-serif" },
         { texto: '{{posto.nome}}', tamanho: 9 },
@@ -65,7 +68,7 @@ export const modeloConsular = (modo: 'PROSA' | 'LISTA'): DefinicaoModelo => {
     rodape: {
       texto: '',
       paginacao: false,
-      bloco: { contactos: CONTACTOS_POSTO, corBarra: '#E30613', imagem: RODAPE_GOVERNO_PNG, imagemAlturaCm: 1.05, tamanho: 6, apenasUltimaPagina: true, alturaReservadaCm: 2.6 },
+      bloco: { contactos: CONTACTOS_POSTO, corBarra: '#E30613', imagem: RODAPE_GOVERNO_PNG, imagemAlturaCm: 1.05, tamanho: 6, apenasUltimaPagina: true, alturaReservadaCm: 2.9, filete: FILETE_VERMELHO },
     },
   };
 };

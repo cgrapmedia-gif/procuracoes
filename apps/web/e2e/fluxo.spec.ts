@@ -34,7 +34,7 @@ test.describe.serial('Ciclo completo no browser', () => {
     await seguinte(page, 'Procuradores');
 
     // Etapa 3: duas procuradoras, actuação conjunta
-    for (const n of ['Helena', 'Kátia']) { await page.getByRole('combobox', { name: 'Pesquisar procuradores' }).fill(n); await page.getByRole('option', { name: new RegExp(n) }).click(); }
+    for (const n of ['Helena', 'Kátia']) { await page.getByRole('combobox', { name: 'Pesquisar procuradores' }).fill(n); await page.getByRole('option', { name: new RegExp(`${n} Demo`) }).click(); }
     await page.getByRole('radio', { name: 'Sempre conjuntamente' }).click();
     await guardado(page);
     await foto(page, '03-procuradores');
@@ -156,6 +156,21 @@ test.describe.serial('Ciclo completo no browser', () => {
     await foto(page, '11-importacao');
     await page.getByRole('button', { name: 'Importar 1 poderes' }).click();
     await expect(page.getByText(/Importação concluída: 1 criados/)).toBeVisible();
+  });
+
+  test('editor de modelos: tamanho de letra, filete e publicação', async ({ page }) => {
+    await entrar(page, 'admin');
+    await page.goto('/admin/modelos');
+    const previa = page.frameLocator('iframe[title="Pré-visualização do modelo"]');
+    await expect(previa.locator('body')).toContainText('PROCURAÇÃO');
+    await page.getByLabel('Tamanho do texto (pt)').fill('13');
+    await expect.poll(() => previa.locator('body').evaluate((b) => getComputedStyle(b).fontSize)).toMatch(/^17\.33/); // 13 pt
+    await page.getByRole('button', { name: 'Cabeçalho' }).click();
+    await expect(page.getByText('Filete do cabeçalho')).toBeVisible();
+    await page.getByLabel(/^Nota da alteração/).fill('Letra 13 (teste)');
+    await page.getByRole('button', { name: 'Publicar nova versão' }).click();
+    await expect(page.getByText(/Nova versão do modelo publicada/)).toBeVisible();
+    await foto(page, '12-editor-modelos');
   });
 
   test('auditoria íntegra', async ({ page }) => {

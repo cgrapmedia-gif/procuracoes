@@ -59,13 +59,13 @@ export function CampoDinamico({ def, valor, mudar, dataActo, desactivado }: { de
 
 /** Campo PESSOA (ex.: menor): pesquisa de pessoas existentes ou registo de uma nova, sem sair da procuração. */
 function CampoPessoa({ def, valor, mudar, desactivado, props }: { def: DefinicaoCampo; valor?: RefEntidade; mudar: (v: ValorCampo) => void; desactivado?: boolean; props: { rotulo: string; obrigatorio: boolean; opcional: boolean; erro?: string; ajuda?: string } }) {
-  const [gaveta, setGaveta] = useState(false);
+  const [gaveta, setGaveta] = useState(false); const [nome, setNome] = useState('');
   return (
     <Campo {...props}>
       {valor?.id
         ? <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><b style={{ fontWeight: 500 }}>{valor.nome}</b>{!desactivado && <button type="button" className="btn pequeno" onClick={() => mudar(undefined)}>Trocar</button>}</span>
-        : <span style={{ display: 'flex', gap: 8 }}><span style={{ flex: 1 }}><SeletorPessoa rotulo={`Pesquisar ${def.rotulo.toLowerCase()}`} aoEscolher={(p) => mudar({ id: p.id, nome: p.nomeCompleto })} /></span>{!desactivado && <button type="button" className="btn" style={{ height: 44 }} onClick={() => setGaveta(true)}><Icone n="mais" t={15} />Nova pessoa</button>}</span>}
-      <PessoaGaveta aberta={gaveta} fechar={() => setGaveta(false)} aoGuardar={(p) => mudar({ id: p.id, nome: p.nomeCompleto })} />
+        : <span style={{ display: 'flex', gap: 8 }}><span style={{ flex: 1 }}><SeletorPessoa rotulo={`Pesquisar ${def.rotulo.toLowerCase()}`} aoEscolher={(p) => mudar({ id: p.id, nome: p.nomeCompleto })} aoCriar={(n) => { setNome(n); setGaveta(true); }} /></span>{!desactivado && <button type="button" className="btn" style={{ height: 44 }} onClick={() => setGaveta(true)}><Icone n="mais" t={15} />Nova pessoa</button>}</span>}
+      <PessoaGaveta aberta={gaveta} nomeInicial={nome} fechar={() => setGaveta(false)} aoGuardar={(p) => mudar({ id: p.id, nome: p.nomeCompleto })} />
     </Campo>
   );
 }

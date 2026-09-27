@@ -10,7 +10,7 @@ import { Rascunho } from './rascunho';
 const FORMAS = [['ISOLADAMENTE', 'Isoladamente (qualquer um deles)'], ['CONJUNTAMENTE', 'Sempre conjuntamente'], ['DOIS_CONJUNTAMENTE', 'Dois conjuntamente'], ['PERSONALIZADA', 'Regra definida na procuração']] as const;
 
 export function EtapaPartes({ papel, r, actualizar, editavel }: { papel: 'outorgantes' | 'procuradores'; r: Rascunho; actualizar: (fn: (x: Rascunho) => Rascunho) => void; editavel: boolean }) {
-  const [gaveta, setG] = useState<{ aberta: boolean; id?: string }>({ aberta: false });
+  const [gaveta, setG] = useState<{ aberta: boolean; id?: string; nome?: string }>({ aberta: false });
   const lista = r[papel];
   const outros = papel === 'outorgantes' ? r.procuradores : r.outorgantes;
   const excluir = [...lista, ...outros].map((p) => p.pessoaId);
@@ -26,7 +26,7 @@ export function EtapaPartes({ papel, r, actualizar, editavel }: { papel: 'outorg
       </div>
       {editavel && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}><SeletorPessoa excluir={excluir} rotulo={`Pesquisar ${titulo.toLowerCase()}`} aoEscolher={(p) => add({ pessoaId: p.id, nome: p.nomeCompleto, sexo: p.sexo })} /></div>
+          <div style={{ flex: 1 }}><SeletorPessoa excluir={excluir} rotulo={`Pesquisar ${titulo.toLowerCase()}`} aoEscolher={(p) => add({ pessoaId: p.id, nome: p.nomeCompleto, sexo: p.sexo })} aoCriar={(nome) => setG({ aberta: true, nome })} /></div>
           <button className="btn" style={{ height: 44 }} onClick={() => setG({ aberta: true })}><Icone n="mais" t={16} />Nova pessoa</button>
         </div>
       )}
@@ -61,7 +61,7 @@ export function EtapaPartes({ papel, r, actualizar, editavel }: { papel: 'outorg
           {r.formaActuacao === 'PERSONALIZADA' && <Campo rotulo="Regra" obrigatorio><input className="entrada" disabled={!editavel} value={r.formaActuacaoPersonalizada ?? ''} onChange={(e) => actualizar((x) => ({ ...x, formaActuacaoPersonalizada: e.target.value }))} placeholder="devendo os actos de disposição ser praticados conjuntamente" /></Campo>}
         </div></div>
       )}
-      <PessoaGaveta aberta={gaveta.aberta} pessoaId={gaveta.id} fechar={() => setG({ aberta: false })}
+      <PessoaGaveta aberta={gaveta.aberta} pessoaId={gaveta.id} nomeInicial={gaveta.nome} fechar={() => setG({ aberta: false })}
         aoGuardar={(p) => { if (gaveta.id) actualizar((x) => ({ ...x, [papel]: x[papel].map((y) => (y.pessoaId === p.id ? { ...y, nome: p.nomeCompleto, sexo: p.sexo } : y)) })); else add({ pessoaId: p.id, nome: p.nomeCompleto, sexo: p.sexo }); }} />
     </div>
   );

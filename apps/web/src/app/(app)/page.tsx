@@ -22,6 +22,7 @@ export default function Painel() {
   const d = useQuery({ queryKey: ['dashboard'], queryFn: () => api<Dash>('/dashboard') });
   const recentes = useQuery({ queryKey: ['poas', 'recentes'], queryFn: () => api<Lista>('/poas?limite=6') });
   const revisao = useQuery({ queryKey: ['poas', 'EM_REVISAO'], queryFn: () => api<Lista>('/poas?estado=EM_REVISAO&limite=5'), enabled: pode('poa.validate') });
+  const meus = useQuery({ queryKey: ['poas', 'meus-rascunhos'], queryFn: () => api<Lista>('/poas?estado=RASCUNHO&minhas=true&limite=5'), enabled: pode('poa.edit') });
   const validadas = useQuery({ queryKey: ['poas', 'VALIDADA'], queryFn: () => api<Lista>('/poas?estado=VALIDADA&limite=5'), enabled: pode('poa.issue') });
   const t = d.data?.totais;
   const max = Math.max(1, ...(d.data?.porMes.map((m) => m.total) ?? [1]));
@@ -78,6 +79,16 @@ export default function Painel() {
             </tbody></table>
           </div></section>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {!!meus.data?.total && (
+              <section className="cartao"><div className="corpo">
+                <h2>Continuar onde parou</h2>
+                {meus.data.itens.map((p) => (
+                  <Link key={p.id} href={`/procuracoes/${p.id}`} className="btn" style={{ justifyContent: 'space-between', height: 'auto', padding: '10px 14px', whiteSpace: 'normal', textAlign: 'left' }}>
+                    <span><b style={{ fontWeight: 600 }}>{p.outorgantes || 'Sem outorgante'}</b><br /><span className="small muted">{p.tipo} · actualizado {dataPT(p.actualizadaEm)}</span></span><Icone n="seta" t={16} />
+                  </Link>
+                ))}
+              </div></section>
+            )}
             {(revisao.data?.total || validadas.data?.total) ? (
               <section className="cartao"><div className="corpo">
                 <h2>Requer a sua atenção</h2>

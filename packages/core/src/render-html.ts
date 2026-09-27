@@ -56,13 +56,13 @@ export function renderizarHtml(doc: DocumentoRenderizado, opts: OpcoesHtml = {})
   /* inline-block de largura zero: não altera a quebra de linha nem a justificação; o excesso é cortado pela margem. */
   p.fill { overflow: hidden; }
   p.fill::after { content: "${traco}"; display: inline-block; width: 0; white-space: nowrap; overflow: visible; vertical-align: baseline; letter-spacing: 0.5px; }
-  h1.titulo { font-size: ${t.tamanho}pt; font-weight: 700; text-align: center; margin: 6pt 0 ${t.espacoParagrafo ?? 10}pt; letter-spacing: 1px; line-height: ${t.entrelinha}; }
+  h1.titulo { font-size: ${t.tamanhoTitulo ?? t.tamanho}pt; font-weight: 700; text-align: center; margin: 6pt 0 ${t.espacoParagrafo ?? 10}pt; letter-spacing: 1px; line-height: ${t.entrelinha}; }
   h1.fill-2 { display: flex; align-items: baseline; gap: 2px; }
   h1.fill-2::before, h1.fill-2::after { content: "${traco}"; flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 400; }
   p.alinea { padding-left: 2em; text-indent: -2em; }
   p.alinea .mk { display: inline-block; width: 2em; text-indent: 0; }
   mark.ph { background: #fff3bf; color: #7a5b00; border-radius: 2px; padding: 0 2px; }
-  section.assinaturas { break-inside: avoid; page-break-inside: avoid; margin-top: 18pt; padding-bottom: ${opts.reservaFinalCm ?? 0}cm; display: flex; flex-direction: column; align-items: center; gap: 22pt; }
+  section.assinaturas { break-inside: avoid; page-break-inside: avoid; margin-top: 18pt; padding-bottom: ${opts.reservaFinalCm ?? 0}cm; display: flex; flex-direction: column; align-items: center; gap: ${t.espacoAssinaturas ?? 22}pt; }
   .ass { text-align: center; font-weight: 700; width: 70%; }
   .ass.esq { align-self: flex-start; text-align: left; width: 45%; }
   .ass.esq .linha { margin: 0; }
@@ -70,7 +70,7 @@ export function renderizarHtml(doc: DocumentoRenderizado, opts: OpcoesHtml = {})
   .ass .nome { margin-top: 4pt; }
   .marca { position: fixed; top: 45%; left: 0; right: 0; text-align: center; transform: rotate(-30deg); font-size: 34pt; font-weight: 700; color: rgba(160, 20, 20, .10); pointer-events: none; z-index: 10; font-family: sans-serif; }
   `;
-  const cab = `<header class="cab">${doc.cabecalho.logotipo ? `<img alt="" src="${escapeHtml(doc.cabecalho.logotipo)}" style="${doc.cabecalho.logotipoLarguraCm ? `width:${doc.cabecalho.logotipoLarguraCm}cm;height:auto;` : ''}">` : ''}${doc.cabecalho.linhas.map((l) => `<div style="${l.negrito ? 'font-weight:700;' : ''}${l.tamanho ? `font-size:${l.tamanho}pt;` : ''}${l.fonte ? `font-family:${escapeHtml(l.fonte)};` : ''}">${escapeHtml(l.texto)}</div>`).join('')}</header>`;
+  const cab = `<header class="cab">${doc.cabecalho.logotipo ? `<img alt="" src="${escapeHtml(doc.cabecalho.logotipo)}" style="${doc.cabecalho.logotipoLarguraCm ? `width:${doc.cabecalho.logotipoLarguraCm}cm;height:auto;` : ''}">` : ''}${doc.cabecalho.linhas.map((l) => `<div style="${l.negrito ? 'font-weight:700;' : ''}${l.tamanho ? `font-size:${l.tamanho}pt;` : ''}${l.fonte ? `font-family:${escapeHtml(l.fonte)};` : ''}">${escapeHtml(l.texto)}</div>`).join('')}${htmlFilete(doc.cabecalho.filete, '5pt 0 0')}</header>`;
   // Moldura: linhas fixas repetem-se em todas as páginas impressas; o cabeçalho (fundo branco) tapa-as na 1.ª página.
   const moldura = doc.moldura?.activa ? `<div class="mold esq"></div><div class="mold dir"></div>` : '';
   const rodapeEcra = !opts.paraImpressao && (doc.rodapeBloco || doc.rodape || doc.paginacao) ? `<footer class="rod-ecra">${htmlRodape(doc)}</footer>` : '';
@@ -89,5 +89,11 @@ export function htmlRodape(doc: DocumentoRenderizado, extra = '', paginas = fals
     <div style="border-left:1.5px solid ${escapeHtml(b.corBarra ?? '#E30613')};padding-left:6px;font-family:Calibri,'Carlito',Arial,sans-serif;font-size:${t}pt;line-height:1.3;color:#111">${b.contactos.map(escapeHtml).join('<br>')}</div>
     ${b.imagem ? `<img alt="" src="${escapeHtml(b.imagem)}" style="height:${b.imagemAlturaCm ?? 1.1}cm;width:auto">` : ''}
   </div>` : '';
-  return `${bloco}${controlo ? `<div style="font-family:Georgia,serif;font-size:6.5pt;color:#666;text-align:center;margin-top:3px">${controlo}</div>` : ''}`;
+  return `${b?.filete?.activo ? htmlFilete(b.filete, '0 0 5px') : ''}${bloco}${controlo ? `<div style="font-family:Georgia,serif;font-size:6.5pt;color:#666;text-align:center;margin-top:3px">${controlo}</div>` : ''}`;
+}
+
+/** Filete horizontal centrado (cabeçalho/rodapé). */
+export function htmlFilete(f: { activo: boolean; cor: string; espessuraPt: number; larguraPct: number } | undefined, margem: string): string {
+  if (!f?.activo) return '';
+  return `<div style="height:0;border-top:${f.espessuraPt}pt solid ${escapeHtml(f.cor)};width:${Math.min(100, Math.max(5, f.larguraPct))}%;margin:${margem};margin-left:auto;margin-right:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div>`;
 }

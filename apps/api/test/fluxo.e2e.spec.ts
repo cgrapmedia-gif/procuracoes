@@ -141,6 +141,28 @@ describe('Pessoas', () => {
     const { rows } = await pool.query(`select doc_number_enc from persons where full_name = 'Amélia Demo Cardoso'`);
     expect(rows[0].doc_number_enc).not.toContain('900000001'); // cifrado em repouso
   });
+  it('pesquisa eficaz: palavras em qualquer ordem e erros de escrita', async () => {
+    const r1 = await request(app.getHttpServer()).get('/api/v1/persons').query({ q: 'cardoso amelia' }).set(auth('operador')).expect(200);
+    expect(r1.body[0].nomeCompleto).toBe('Amélia Demo Cardoso');
+    const r2 = await request(app.getHttpServer()).get('/api/v1/persons').query({ q: 'Fernandez Katya' }).set(auth('operador')).expect(200);
+    expect(r2.body[0]).toMatchObject({ nomeCompleto: 'Kátia Demo Fernandes', aproximado: true });
+  });
+  it('importação de pessoas: pré-visualização (nova, duplicada, erro) e confirmação; só administradores', async () => {
+    const csv = 'Nome;Sexo;Data de nascimento;Nacionalidade;Estado civil;BI;Validade;Morada;Código postal;Localidade;País\n'
+      + 'Importada Pelo Ficheiro;F;15/03/1990;angolana;casada;900000099LA099;31/12/2032;Rua Importada, 1;4000-001;Porto;Portugal\n'
+      + 'Amelia Repetida;F;01/01/1980;angolana;solteira;900000001LA001;01/01/2033;;;;\n'
+      + 'Sem Documento;X;;angolana;;;;;;;';
+    await request(app.getHttpServer()).post('/api/v1/persons/import/preview').set(auth('operador')).attach('ficheiro', Buffer.from(csv), 'pessoas.csv').expect(403);
+    const p = await request(app.getHttpServer()).post('/api/v1/persons/import/preview').set(auth('admin')).attach('ficheiro', Buffer.from(csv), 'pessoas.csv').expect(201);
+    expect({ novos: p.body.novos, duplicados: p.body.duplicados, erros: p.body.erros }).toEqual({ novos: 1, duplicados: 1, erros: 1 });
+    expect(p.body.resultados[0].documento).toBe('BI_AO 900•••099');
+    const c = await request(app.getHttpServer()).post(`/api/v1/persons/import/${p.body.loteId}/commit`).set(auth('admin')).expect(201);
+    expect(c.body).toEqual({ criados: 1, ignorados: 0 });
+    const s2 = await request(app.getHttpServer()).get('/api/v1/persons').query({ q: '900000099LA099' }).set(auth('admin')).expect(200);
+    expect(s2.body[0].nomeCompleto).toBe('Importada Pelo Ficheiro');
+    const { rows } = await pool.query(`select payload from import_batches where id = $1`, [p.body.loteId]);
+    expect(JSON.stringify(rows[0].payload)).not.toContain('Importada');
+  });
   it('pesquisa por nome sem acentos', async () => {
     const s = await request(app.getHttpServer()).get('/api/v1/persons').query({ q: 'katia' }).set(auth('operador')).expect(200);
     expect(s.body[0].nomeCompleto).toBe('Kátia Demo Fernandes');

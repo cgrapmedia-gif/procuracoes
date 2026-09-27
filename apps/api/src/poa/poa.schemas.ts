@@ -21,5 +21,5 @@ export type GuardarProcuracao = z.infer<typeof GuardarProcuracao>;
 export const Transicao = z.object({ accao: z.enum(['SUBMETER', 'DEVOLVER', 'VALIDAR', 'EMITIR', 'EMITIR_DIRECTO', 'CANCELAR', 'ARQUIVAR']), motivo: z.string().max(1000).optional() });
 export const PesquisaProcuracoes = z.object({
   q: z.string().max(200).optional(), numero: z.string().max(60).optional(), estado: z.enum(['RASCUNHO', 'EM_REVISAO', 'VALIDADA', 'EMITIDA', 'ASSINADA', 'CANCELADA', 'ARQUIVADA']).optional(),
-  tipo: z.string().optional(), de: Data.optional(), ate: Data.optional(), limite: z.coerce.number().int().min(1).max(100).default(25), pagina: z.coerce.number().int().min(1).default(1),
+  tipo: z.string().optional(), minhas: z.enum(['true', 'false']).optional(), de: Data.optional(), ate: Data.optional(), limite: z.coerce.number().int().min(1).max(100).default(25), pagina: z.coerce.number().int().min(1).default(1),
 });

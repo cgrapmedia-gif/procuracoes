@@ -9,7 +9,9 @@ import { Categoria, DetalheProcuracao, PoderCatalogo, Verificacao } from '@/lib/
 import { Casca } from '@/components/Casca';
 import { Icone } from '@/components/Icone';
 import { EstadoBadge, Giro } from '@/components/ui';
-import { ETAPAS, Etapas } from '@/components/assistente/Etapas';
+import { DICAS, ETAPAS, EstadoEtapa, Etapas } from '@/components/assistente/Etapas';
+import { avaliarRegras, validarCampo } from '@proc/core/browser';
+import { paraMotor } from '@/components/assistente/rascunho';
 import { useRascunho } from '@/components/assistente/rascunho';
 import { EtapaPartes } from '@/components/assistente/EtapaPartes';
 import { Construtor } from '@/components/assistente/Construtor';
@@ -27,7 +29,7 @@ function Assistente({ id }: { id: string }) {
   const clausulasQ = useQuery({ queryKey: ['catalogo', 'CLAUSULA'], queryFn: () => api<{ itens: PoderCatalogo[] }>('/powers?limite=200&tipo=CLAUSULA').then((x) => x.itens) });
   const categorias = useQuery({ queryKey: ['categorias'], queryFn: () => api<Categoria[]>('/power-categories') });
   const oficiantes = useQuery({ queryKey: ['officers'], queryFn: () => api<{ id: string; nome: string; cargo: string }[]>('/officers') });
-  const verif = useQuery({ queryKey: ['check', id], queryFn: () => api<Verificacao>(`/poas/${id}/check`), enabled: etapa >= 7 });
+  const verif = useQuery({ queryKey: ['check', id], queryFn: () => api<Verificacao>(`/poas/${id}/check`), enabled: !!det.data });
   const aoGuardar = useCallback(() => { qc.invalidateQueries({ queryKey: ['poa', id] }); qc.invalidateQueries({ queryKey: ['check', id] }); }, [qc, id]);
   const { r, actualizar, estado, erro } = useRascunho(id, det.data, !!editavel, aoGuardar);
   const recarregar = () => { qc.invalidateQueries({ queryKey: ['poa', id] }); qc.invalidateQueries({ queryKey: ['check', id] }); };
@@ -38,6 +40,19 @@ function Assistente({ id }: { id: string }) {
   const todos = [...catalogo.data, ...(clausulasQ.data ?? []).filter((c) => !catalogo.data.some((x) => x.codigo === c.codigo))];
   const ofi = oficiantes.data?.find((o) => o.id === (r.oficianteId ?? d.oficianteId));
   const passo = (n: number) => `/procuracoes/${id}?etapa=${n}`;
+  // Estado de cada etapa, calculado a partir do rascunho (feedback imediato no indicador de etapas)
+  const porCodigo = new Map(todos.map((p) => [p.codigo, p]));
+  const errosRegras = avaliarRegras(paraMotor(r.itens, porCodigo), { tipoProcuracao: d.tipo.codigo, dataActo: r.dataActo }).filter((p) => p.severidade === 'ERRO' && p.codigo !== 'CAMPO').length;
+  const camposOk = (clausula: boolean) => r.itens.filter((i) => i.clausula === clausula).every((i) => i.campos.every((c) => validarCampo(c, i.valores[c.chave], { dataActo: r.dataActo }).length === 0));
+  const estados: Partial<Record<number, EstadoEtapa>> = {
+    2: r.outorgantes.length ? 'ok' : 'falta',
+    3: r.procuradores.length && (r.procuradores.length < 2 || r.formaActuacao !== 'PERSONALIZADA' || r.formaActuacaoPersonalizada) ? 'ok' : 'falta',
+    4: r.itens.some((i) => !i.clausula) && errosRegras === 0 ? 'ok' : 'falta',
+    5: r.itens.some((i) => !i.clausula) && camposOk(false) ? 'ok' : 'falta',
+    6: camposOk(true) ? 'ok' : 'falta',
+    ...(verif.data ? { 7: verif.data.pronta || d.estado !== 'RASCUNHO' ? 'ok' as const : 'falta' as const } : {}),
+    ...(d.estado !== 'RASCUNHO' ? { 8: 'ok' as const, 9: ['EMITIDA', 'ASSINADA', 'ARQUIVADA'].includes(d.estado) ? 'ok' as const : undefined } : {}),
+  };
   const largo = etapa === 4 || etapa === 6;
 
   return (
@@ -57,7 +72,8 @@ function Assistente({ id }: { id: string }) {
         {d.estado !== 'RASCUNHO' && etapa < 7 && <div className="aviso info">Procuração em {d.estado.toLowerCase().replace('_', ' ')}: o conteúdo está bloqueado.</div>}
         {estado === 'conflito' && <div className="aviso erro"><span style={{ flex: 1 }}>Esta procuração foi alterada noutro posto. Recarregue para continuar sem perder o trabalho do outro utilizador.</span><button className="btn pequeno" onClick={() => window.location.reload()}>Recarregar</button></div>}
         {estado === 'erro' && <div className="aviso erro">{erro}</div>}
-        <Etapas actual={etapa} id={id} bloqueadas={d.estado !== 'RASCUNHO'} />
+        <Etapas actual={etapa} id={id} bloqueadas={d.estado !== 'RASCUNHO'} estados={estados} />
+        {DICAS[etapa] && d.estado === 'RASCUNHO' && <p className="dica" style={{ margin: 0 }}><Icone n="ideia" t={15} cor="var(--ouro)" />{DICAS[etapa]}</p>}
       </div>
       <main className={largo ? '' : 'conteudo'} style={largo ? { display: 'flex', flexDirection: 'column' } : undefined}>
         {etapa === 2 && <EtapaPartes papel="outorgantes" r={r} actualizar={actualizar} editavel={!!editavel} />}
