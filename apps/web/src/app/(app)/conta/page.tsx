@@ -19,6 +19,7 @@ export default function Conta() {
     <Casca migalhas={['A minha conta']}>
       <main className="conteudo" style={{ maxWidth: 560 }}>
         <div><h1>A minha conta</h1><span className="muted">{utilizador?.nome}, {utilizador?.email}</span></div>
+        {utilizador?.trocarPassword && <div className="aviso atencao" role="status">A sua palavra-passe é temporária (foi criada ou redefinida por um administrador). Defina uma palavra-passe pessoal para continuar.</div>}
         <form className="cartao" onSubmit={enviar}><div className="corpo">
           <h2>Alterar palavra-passe</h2>
           {ok ? <div className="aviso ok">Palavra-passe alterada. Por segurança, vai entrar novamente.</div> : <>

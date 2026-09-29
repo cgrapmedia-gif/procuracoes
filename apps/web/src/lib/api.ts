@@ -19,7 +19,7 @@ export const definirToken = (t: string | null) => { accessToken = t; };
 export const aoSessaoExpirar = (fn: () => void) => { aoExpirar = fn; };
 
 export interface Sessao { accessToken: string; expiresIn: number; utilizador: Utilizador }
-export interface Utilizador { id: string; nome: string; email: string; permissoes: string[]; perfis: string[] }
+export interface Utilizador { id: string; nome: string; email: string; permissoes: string[]; perfis: string[]; trocarPassword?: boolean }
 
 export async function renovarSessao(): Promise<Sessao | null> {
   const r = await fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'same-origin', headers: { 'X-Requested-With': 'procuracoes' } });

@@ -9,6 +9,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const path = usePathname();
   useEffect(() => { if (!aCarregar && !utilizador) router.replace(`/login?voltar=${encodeURIComponent(path)}`); }, [aCarregar, utilizador, router, path]);
-  if (aCarregar || !utilizador) return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><Giro rotulo="A verificar a sessão" /></div>;
+  // Palavra-passe temporária: tem de ser alterada antes de usar a aplicação
+  useEffect(() => { if (utilizador?.trocarPassword && path !== '/conta') router.replace('/conta?temporaria=1'); }, [utilizador, path, router]);
+  if (aCarregar || !utilizador || (utilizador.trocarPassword && path !== '/conta')) return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><Giro rotulo="A verificar a sessão" /></div>;
   return <>{children}</>;
 }

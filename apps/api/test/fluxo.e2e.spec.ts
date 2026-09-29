@@ -364,3 +364,23 @@ describe('Pessoas com dados incompletos e eliminação de procurações', () => 
     expect(v.body.integra).toBe(true);
   });
 });
+
+describe('Gestão de utilizadores', () => {
+  it('novo utilizador tem palavra-passe temporária: só pode alterá-la; email repetido dá 409; admin não se desactiva', async () => {
+    const pw = 'Temporaria2026x';
+    const c = await request(app.getHttpServer()).post('/api/v1/admin/users').set(auth('admin')).send({ nome: 'Nova Operadora', email: 'nova.operadora@demo.local', password: pw, perfis: ['OPERADOR'] }).expect(201);
+    await request(app.getHttpServer()).post('/api/v1/admin/users').set(auth('admin')).send({ nome: 'Outra', email: 'NOVA.operadora@demo.local', password: pw, perfis: ['OPERADOR'] }).expect(409);
+    await request(app.getHttpServer()).post('/api/v1/admin/users').set(auth('admin')).send({ nome: 'X', email: 'mau', password: 'curta', perfis: [] }).expect(400);
+    const l = await request(app.getHttpServer()).post('/api/v1/auth/login').send({ email: 'nova.operadora@demo.local', password: pw }).expect(200);
+    expect(l.body.utilizador.trocarPassword).toBe(true);
+    const t = l.body.accessToken;
+    const bloq = await request(app.getHttpServer()).get('/api/v1/poas').set('Authorization', `Bearer ${t}`).expect(403);
+    expect(bloq.body.codigo).toBe('TROCAR_PASSWORD');
+    await request(app.getHttpServer()).get('/api/v1/auth/me').set('Authorization', `Bearer ${t}`).expect(200);
+    await request(app.getHttpServer()).put('/api/v1/auth/password').set('Authorization', `Bearer ${t}`).send({ actual: pw, nova: 'PessoalSegura2026' }).expect(204);
+    const [{ must_change_password }] = (await pool.query('select must_change_password from users where id = $1', [c.body.id])).rows;
+    expect(must_change_password).toBe(false);
+    const me = (await request(app.getHttpServer()).get('/api/v1/auth/me').set(auth('admin'))).body;
+    await request(app.getHttpServer()).put(`/api/v1/admin/users/${me.id}`).set(auth('admin')).send({ activo: false }).expect(400);
+  });
+});

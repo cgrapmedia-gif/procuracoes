@@ -11,7 +11,10 @@ export const PERMS = 'perms';
 /** Exige TODAS as permissões indicadas. */
 export const Requer = (...p: string[]) => SetMetadata(PERMS, p);
 
-export interface Utilizador { id: string; orgId: string; nome: string; permissoes: string[]; ip?: string }
+export interface Utilizador { id: string; orgId: string; nome: string; permissoes: string[]; ip?: string; trocarPassword?: boolean }
+/** Rotas acessíveis com palavra-passe temporária (enquanto não for alterada). */
+export const PERMITIDA_COM_PASSWORD_TEMPORARIA = Symbol('pwTemp');
+export const PermitidaComPasswordTemporaria = () => SetMetadata(PERMITIDA_COM_PASSWORD_TEMPORARIA, true);
 export const Actor = createParamDecorator((_: unknown, ctx: ExecutionContext): Utilizador => {
   const req = ctx.switchToHttp().getRequest<Request & { user: Utilizador }>();
   return { ...req.user, ip: req.ip };
@@ -26,9 +29,11 @@ export class AuthGuard implements CanActivate {
     const h = req.headers.authorization;
     if (!h?.startsWith('Bearer ')) throw new UnauthorizedException('Sessão inválida');
     try {
-      const p = await this.jwt.verifyAsync<{ sub: string; org: string; nome: string; perms: string[] }>(h.slice(7));
-      req.user = { id: p.sub, orgId: p.org, nome: p.nome, permissoes: p.perms };
+      const p = await this.jwt.verifyAsync<{ sub: string; org: string; nome: string; perms: string[]; tp?: number }>(h.slice(7));
+      req.user = { id: p.sub, orgId: p.org, nome: p.nome, permissoes: p.perms, trocarPassword: !!p.tp };
     } catch { throw new UnauthorizedException('Sessão expirada'); }
+    // Palavra-passe temporária: só pode alterá-la (e sair) até o fazer
+    if (req.user.trocarPassword && !this.reflector.getAllAndOverride<boolean>(PERMITIDA_COM_PASSWORD_TEMPORARIA, [ctx.getHandler(), ctx.getClass()])) throw new ForbiddenException({ message: 'Altere a palavra-passe temporária antes de continuar.', codigo: 'TROCAR_PASSWORD' });
     const exigidas = this.reflector.getAllAndOverride<string[]>(PERMS, [ctx.getHandler(), ctx.getClass()]) ?? [];
     const falta = exigidas.filter((x) => !req.user!.permissoes.includes(x));
     if (falta.length) throw new ForbiddenException(`Permissão necessária: ${falta.join(', ')}`);

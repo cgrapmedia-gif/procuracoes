@@ -17,20 +17,43 @@ export function Campo({ rotulo, obrigatorio, ajuda, erro, children, opcional }: 
   );
 }
 
-export function Gaveta({ titulo, aberta, fechar, children, rodape }: { titulo: string; aberta: boolean; fechar: () => void; children: ReactNode; rodape?: ReactNode }) {
+/**
+ * Gestão de foco dos diálogos (gaveta e modal):
+ *  - o foco vai para o 1.º campo do corpo SÓ quando o diálogo abre (antes, cada tecla re-disparava o efeito e o foco
+ *    saltava para o botão «Fechar» — só se conseguia escrever uma letra);
+ *  - Tab/Shift+Tab ficam dentro do diálogo; Esc fecha; ao fechar, o foco volta ao elemento que o abriu.
+ */
+function useDialogo(aberta: boolean, fechar: () => void) {
   const ref = useRef<HTMLDivElement>(null);
+  const fecharRef = useRef(fechar);
+  fecharRef.current = fechar;
   useEffect(() => {
     if (!aberta) return;
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
+    const anterior = document.activeElement as HTMLElement | null;
+    const focaveis = () => Array.from(ref.current?.querySelectorAll<HTMLElement>('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])') ?? []);
+    const primeiro = ref.current?.querySelector<HTMLElement>('.corpo input:not([disabled]), .corpo select:not([disabled]), .corpo textarea:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])');
+    (primeiro ?? focaveis()[0])?.focus();
+    const k = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); fecharRef.current(); return; }
+      if (e.key !== 'Tab') return;
+      const f = focaveis(); if (!f.length) return;
+      const i = f.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey && (i <= 0)) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+    };
     document.addEventListener('keydown', k);
-    ref.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus();
-    return () => document.removeEventListener('keydown', k);
-  }, [aberta, fechar]);
+    return () => { document.removeEventListener('keydown', k); anterior?.focus?.(); };
+  }, [aberta]);
+  return ref;
+}
+
+export function Gaveta({ titulo, aberta, fechar, children, rodape }: { titulo: string; aberta: boolean; fechar: () => void; children: ReactNode; rodape?: ReactNode }) {
+  const ref = useDialogo(aberta, fechar);
   if (!aberta) return null;
   return (
     <div className="gaveta-fundo" onMouseDown={(e) => { if (e.target === e.currentTarget) fechar(); }}>
       <div className="gaveta" role="dialog" aria-modal="true" aria-label={titulo} ref={ref}>
-        <header><h2 style={{ flex: 1 }}>{titulo}</h2><button className="btn icone fantasma" onClick={fechar} aria-label="Fechar"><Icone n="x" /></button></header>
+        <header><h2 style={{ flex: 1 }}>{titulo}</h2><button type="button" className="btn icone fantasma" onClick={fechar} aria-label="Fechar"><Icone n="x" /></button></header>
         <div className="corpo">{children}</div>
         {rodape && <footer>{rodape}</footer>}
       </div>
@@ -39,17 +62,12 @@ export function Gaveta({ titulo, aberta, fechar, children, rodape }: { titulo: s
 }
 
 export function Modal({ titulo, aberta, fechar, children, rodape }: { titulo: string; aberta: boolean; fechar: () => void; children: ReactNode; rodape: ReactNode }) {
-  useEffect(() => {
-    if (!aberta) return;
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
-    document.addEventListener('keydown', k);
-    return () => document.removeEventListener('keydown', k);
-  }, [aberta, fechar]);
+  const ref = useDialogo(aberta, fechar);
   if (!aberta) return null;
   return (
     <div className="modal-fundo" onMouseDown={(e) => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={titulo}>
-        <h2>{titulo}</h2>{children}<div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>{rodape}</div>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={titulo} ref={ref}>
+        <h2>{titulo}</h2><div className="corpo" style={{ display: 'contents' }}>{children}</div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>{rodape}</div>
       </div>
     </div>
   );

@@ -175,6 +175,21 @@ test.describe.serial('Ciclo completo no browser', () => {
     await foto(page, '12-editor-modelos');
   });
 
+  test('criar utilizador: escreve-se o nome inteiro sem o formulário perder o foco', async ({ page }) => {
+    await entrar(page, 'admin');
+    await page.goto('/admin/utilizadores');
+    await page.getByRole('button', { name: 'Novo utilizador' }).click();
+    const nome = page.getByLabel(/^Nome completo/);
+    await expect(nome).toBeFocused();
+    await nome.pressSequentially('Maria da Conceição Teste');
+    await expect(nome).toHaveValue('Maria da Conceição Teste');
+    await page.getByLabel(/^Email/).pressSequentially('maria.teste@demo.local');
+    await expect(page.getByLabel(/^Email/)).toHaveValue('maria.teste@demo.local');
+    await page.getByRole('button', { name: 'Criar utilizador' }).click();
+    await expect(page.getByRole('row', { name: /Maria da Conceição Teste/ })).toContainText('Palavra-passe temporária');
+    await foto(page, '13-utilizadores');
+  });
+
   test('auditoria íntegra', async ({ page }) => {
     await entrar(page, 'admin');
     await page.goto('/admin/auditoria');

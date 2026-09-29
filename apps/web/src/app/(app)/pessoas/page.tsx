@@ -13,9 +13,9 @@ import { Giro, useToast } from '@/components/ui';
 
 export default function Pessoas() {
   const { pode } = useAuth(); const qc = useQueryClient(); const toast = useToast();
-  const [q, setQ] = useState(''); const [busca, setBusca] = useState('');
+  const [q, setQ] = useState(''); const [busca, setBusca] = useState(''); const [pagina, setPagina] = useState(1);
   const [gaveta, setG] = useState<{ aberta: boolean; id?: string }>({ aberta: false });
-  const lista = useQuery({ queryKey: ['persons', busca], queryFn: () => api<PessoaResumo[]>(`/persons${busca ? `?q=${encodeURIComponent(busca)}` : ''}`) });
+  const lista = useQuery({ queryKey: ['persons', busca, pagina], queryFn: () => api<PessoaResumo[]>(`/persons?pagina=${pagina}${busca ? `&q=${encodeURIComponent(busca)}` : ''}`) });
   const hoje = new Date().toISOString().slice(0, 10);
   return (
     <Casca migalhas={['Pessoas']}>
@@ -24,7 +24,7 @@ export default function Pessoas() {
           {pode('person.import') && <Link className="btn" href="/pessoas/importar"><Icone n="carregar" t={16} />Importar</Link>}
           {pode('person.manage') && <button className="btn primario" onClick={() => setG({ aberta: true })}><Icone n="mais" t={16} />Nova pessoa</button>}</div>
         <section className="cartao">
-          <form style={{ display: 'flex', gap: 12, padding: 16 }} onSubmit={(e) => { e.preventDefault(); setBusca(q.trim()); }}>
+          <form style={{ display: 'flex', gap: 12, padding: 16 }} onSubmit={(e) => { e.preventDefault(); setBusca(q.trim()); setPagina(1); }}>
             <label className="campo" style={{ flex: 1 }}><span className="sr">Pesquisar pessoas</span><input className="entrada" type="search" placeholder="Nome (palavras em qualquer ordem, com ou sem acentos), NIF ou n.º de documento" value={q} onChange={(e) => setQ(e.target.value)} /></label>
             <button className="btn escuro">Pesquisar</button>
           </form>
@@ -33,13 +33,20 @@ export default function Pessoas() {
               <tbody>{lista.data?.map((p) => {
                 const expirado = !p.documento.vitalicio && p.documento.validade && p.documento.validade < hoje;
                 return (
-                  <tr key={p.id}><td style={{ fontWeight: 500 }}>{p.nomeCompleto} {p.demo && <span className="small muted">DEMO</span>}</td><td className="mono">{p.documento.tipo} {p.documento.numero}</td>
+                  <tr key={p.id}><td style={{ fontWeight: 500 }}>{p.nomeCompleto} {p.demo && <span className="small muted">DEMO</span>}</td><td className="mono">{p.documento.numero ? `${p.documento.tipo} ${p.documento.numero}` : <span className="small" style={{ color: 'var(--ambar)', fontFamily: 'var(--sans)' }}>sem documento</span>}{!p.sexo && <span className="small" style={{ color: 'var(--ambar)', fontFamily: 'var(--sans)' }}> · sexo por indicar</span>}</td>
                     <td>{p.documento.vitalicio ? 'Vitalício' : expirado ? <span style={{ color: 'var(--carmim)', fontWeight: 600 }}>Expirado {dataPT(p.documento.validade)}</span> : dataPT(p.documento.validade)}</td>
                     <td className="muted">{p.nacionalidade}</td>
                     <td style={{ textAlign: 'right' }}>{pode('person.manage') && <button className="btn pequeno" onClick={() => setG({ aberta: true, id: p.id })}>Editar</button>}</td></tr>
                 );
               })}</tbody></table>
           )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderTop: '1px solid var(--linha)' }}>
+            <span className="small muted">{busca ? `Resultados para «${busca}»` : 'Actualizadas mais recentemente'} · página {pagina}</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn pequeno" disabled={pagina === 1} onClick={() => setPagina((x) => x - 1)}>Anterior</button>
+              <button className="btn pequeno" disabled={(lista.data?.length ?? 0) < 20} onClick={() => setPagina((x) => x + 1)}>Seguinte</button>
+            </div>
+          </div>
         </section>
         <PessoaGaveta aberta={gaveta.aberta} pessoaId={gaveta.id} fechar={() => setG({ aberta: false })} aoGuardar={() => { qc.invalidateQueries({ queryKey: ['persons'] }); toast('Pessoa guardada.'); }} />
       </main>

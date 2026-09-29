@@ -143,6 +143,7 @@ export default function Modelos() {
                     <Num rotulo="Tamanho do título" unidade="pt" valor={def.tipografia.tamanhoTitulo ?? def.tipografia.tamanho} passo={0.5} min={8} max={24} mudar={(v) => up((d) => { d.tipografia.tamanhoTitulo = v; })} />
                     <Num rotulo="Entrelinha" unidade="×" valor={def.tipografia.entrelinha} passo={0.05} min={1} max={3} mudar={(v) => up((d) => { d.tipografia.entrelinha = v; })} />
                     <Num rotulo="Espaço entre parágrafos" unidade="pt" valor={def.tipografia.espacoParagrafo ?? 6} passo={1} min={0} max={30} mudar={(v) => up((d) => { d.tipografia.espacoParagrafo = v; })} />
+                    <Num rotulo="Tamanho do texto das assinaturas" unidade="pt" valor={def.tipografia.tamanhoAssinaturas ?? def.tipografia.tamanho} passo={0.5} min={7} max={20} mudar={(v) => up((d) => { d.tipografia.tamanhoAssinaturas = v; })} />
                     <Num rotulo="Espaço entre assinaturas" unidade="pt" valor={def.tipografia.espacoAssinaturas ?? 22} passo={2} min={0} max={80} mudar={(v) => up((d) => { d.tipografia.espacoAssinaturas = v; })} />
                   </div>
                 </Seccao>

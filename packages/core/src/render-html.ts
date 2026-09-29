@@ -68,7 +68,7 @@ export function renderizarHtml(doc: DocumentoRenderizado, opts: OpcoesHtml = {})
   p.alinea .mk { display: inline-block; width: 2em; text-indent: 0; }
   mark.ph { background: #fff3bf; color: #7a5b00; border-radius: 2px; padding: 0 2px; }
   section.assinaturas { break-inside: avoid; page-break-inside: avoid; margin-top: 18pt; padding-bottom: ${opts.reservaFinalCm ?? 0}cm; display: flex; flex-direction: column; align-items: center; gap: ${t.espacoAssinaturas ?? 22}pt; }
-  .ass { text-align: center; font-weight: 700; width: 70%; }
+  .ass { text-align: center; font-weight: 700; width: 70%; font-size: ${t.tamanhoAssinaturas ?? t.tamanho}pt; }
   .ass.esq { align-self: flex-start; text-align: left; width: 45%; }
   .ass.esq .linha { margin: 0; }
   .ass .linha { border-bottom: 1px solid #111; height: 34pt; margin: 0 10%; }

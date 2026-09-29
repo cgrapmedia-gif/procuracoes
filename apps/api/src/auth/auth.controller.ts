@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Put, Req, Res, UnauthorizedExcep
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { Actor, Public, Utilizador, ZodPipe } from '../common/http';
+import { Actor, PermitidaComPasswordTemporaria, Public, Utilizador, ZodPipe } from '../common/http';
 import { config } from '../config';
 import { AuthService, Sessao } from './auth.service';
 
@@ -44,10 +44,10 @@ export class AuthController {
     res.clearCookie(COOKIE, { path: '/api/v1/auth' });
   }
 
-  @Get('me') me(@Actor() u: Utilizador) { return u; }
+  @Get('me') @PermitidaComPasswordTemporaria() me(@Actor() u: Utilizador) { return u; }
 
   /** Altera a própria palavra-passe. As outras sessões são terminadas; esta mantém-se com novo refresh token. */
-  @Put('password') @HttpCode(204) @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Put('password') @PermitidaComPasswordTemporaria() @HttpCode(204) @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async password(@Body(new ZodPipe(AlterarPassword)) b: z.infer<typeof AlterarPassword>, @Actor() u: Utilizador, @Res({ passthrough: true }) res: Response) {
     await this.auth.alterarPassword(u.id, b.actual, b.nova, u.ip);
     res.clearCookie(COOKIE, { path: '/api/v1/auth' });

@@ -16,7 +16,7 @@ let hashFicticio: Promise<string> | undefined;
 
 export const hashPassword = (p: string) => hash(p, { memoryCost: 19456, timeCost: 2, parallelism: 1 });
 
-export interface Sessao { accessToken: string; refreshToken: string; expiresIn: number; utilizador: { id: string; nome: string; email: string; permissoes: string[]; perfis: string[] } }
+export interface Sessao { accessToken: string; refreshToken: string; expiresIn: number; utilizador: { id: string; nome: string; email: string; permissoes: string[]; perfis: string[]; trocarPassword: boolean } }
 
 @Injectable()
 export class AuthService {
@@ -78,7 +78,7 @@ export class AuthService {
     if (!u || !(await verify(u.passwordHash, actual).catch(() => false))) throw new UnauthorizedException('Palavra-passe actual incorrecta');
     if (actual === nova) throw new UnauthorizedException('A nova palavra-passe tem de ser diferente');
     await this.db.transaction(async (tx) => {
-      await tx.update(users).set({ passwordHash: await hashPassword(nova), updatedAt: new Date() }).where(eq(users.id, userId));
+      await tx.update(users).set({ passwordHash: await hashPassword(nova), mustChangePassword: false, updatedAt: new Date() }).where(eq(users.id, userId));
       await tx.update(refreshTokens).set({ revokedAt: new Date() }).where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
       await this.audit.log(tx, { id: userId, ip }, 'AUTH_ALTERAR_PASSWORD', 'user', userId);
     });
@@ -94,9 +94,9 @@ export class AuthService {
     const [u] = await db.select().from(users).where(eq(users.id, userId));
     const { perms, perfis } = await this.permissoes(db, userId);
     const cfg = config();
-    const accessToken = await this.jwt.signAsync({ sub: u.id, org: u.orgId, nome: u.name, perms }, { expiresIn: cfg.JWT_TTL_SECONDS });
+    const accessToken = await this.jwt.signAsync({ sub: u.id, org: u.orgId, nome: u.name, perms, ...(u.mustChangePassword ? { tp: 1 } : {}) }, { expiresIn: cfg.JWT_TTL_SECONDS });
     const refreshToken = CryptoService.token();
     await db.insert(refreshTokens).values({ userId, familyId, tokenHash: CryptoService.sha256(refreshToken), expiresAt: new Date(Date.now() + cfg.REFRESH_TTL_DAYS * 86400_000), ip: meta.ip, userAgent: meta.ua?.slice(0, 300) });
-    return { accessToken, refreshToken, expiresIn: cfg.JWT_TTL_SECONDS, utilizador: { id: u.id, nome: u.name, email: u.email, permissoes: perms, perfis } };
+    return { accessToken, refreshToken, expiresIn: cfg.JWT_TTL_SECONDS, utilizador: { id: u.id, nome: u.name, email: u.email, permissoes: perms, perfis, trocarPassword: u.mustChangePassword } };
   }
 }

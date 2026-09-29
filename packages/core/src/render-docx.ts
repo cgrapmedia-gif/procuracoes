@@ -69,12 +69,13 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
         return [new Paragraph({ border, alignment: AlignmentType.JUSTIFIED, spacing, indent: { left: 567, hanging: 567 }, tabStops: [{ type: TabStopType.LEFT, position: 567 }, ...(b.preencher ? tabFill : [])], children: [new TextRun({ text: `${b.marcador}\t`, font: t.fonte, size }), ...b.runs.map(tr), ...(b.preencher ? [fill()] : [])] })];
       case 'espaco': return [new Paragraph({ border, spacing: { before: b.altura * 20 }, children: [] })];
       case 'assinaturas':
+        const sa = (t.tamanhoAssinaturas ?? t.tamanho) * 2;
         return b.itens.flatMap((i, idx) => {
           const al = i.alinhamento === 'ESQUERDA' ? AlignmentType.LEFT : AlignmentType.CENTER;
           return [
-            new Paragraph({ border, alignment: al, keepNext: true, keepLines: true, spacing: { before: idx === 0 ? 480 : Math.round((t.espacoAssinaturas ?? 18) * 20) }, children: [new TextRun({ text: i.rotulo, bold: true, font: t.fonte, size })] }),
+            new Paragraph({ border, alignment: al, keepNext: true, keepLines: true, spacing: { before: idx === 0 ? 480 : Math.round((t.espacoAssinaturas ?? 18) * 20) }, children: [new TextRun({ text: i.rotulo, bold: true, font: t.fonte, size: sa })] }),
             new Paragraph({ border, alignment: al, keepNext: !!i.nome || idx < b.itens.length - 1, spacing: { before: 480 }, children: [new TextRun({ text: '_'.repeat(i.alinhamento === 'ESQUERDA' ? 26 : 38), font: t.fonte, size })] }),
-            ...(i.nome ? [new Paragraph({ border, alignment: al, keepNext: idx < b.itens.length - 1, children: [new TextRun({ text: i.nome, bold: true, font: t.fonte, size })] })] : []),
+            ...(i.nome ? [new Paragraph({ border, alignment: al, keepNext: idx < b.itens.length - 1, children: [new TextRun({ text: i.nome, bold: true, font: t.fonte, size: sa })] })] : []),
           ];
         });
     }

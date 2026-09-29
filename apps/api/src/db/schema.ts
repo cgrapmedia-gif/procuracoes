@@ -33,7 +33,10 @@ export const users = pgTable('users', {
   id: id(), orgId: uuid('org_id').notNull().references(() => organizations.id), email: varchar('email', { length: 200 }).notNull(),
   name: text('name').notNull(), passwordHash: text('password_hash').notNull(), active: boolean('active').notNull().default(true),
   failedLogins: integer('failed_logins').notNull().default(0), lockedUntil: timestamp('locked_until', { withTimezone: true }),
-  lastLoginAt: timestamp('last_login_at', { withTimezone: true }), createdAt: criado(), updatedAt: actualizado(),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  /** Palavra-passe temporária (criada/redefinida por um administrador): tem de ser alterada no próximo acesso. */
+  mustChangePassword: boolean('must_change_password').notNull().default(false),
+  createdAt: criado(), updatedAt: actualizado(),
 }, (t) => ({ emailUq: uniqueIndex('users_email_uq').on(sql`lower(${t.email})`) }));
 
 export const roles = pgTable('roles', { id: id(), code: varchar('code', { length: 40 }).notNull().unique(), name: text('name').notNull(), system: boolean('system').notNull().default(false) });

@@ -17,8 +17,11 @@ export class PersonsController {
 
   @Post('import/:lote/commit') @Requer('person.import')
   confirmarImport(@Param('lote', ParseUUIDPipe) lote: string, @Actor() u: Utilizador) { return this.imp.confirmar(lote, u); }
-  @Get() @Requer('person.read') pesquisar(@Query('q') q: string | undefined, @Actor() u: Utilizador) { return this.svc.pesquisar(u, q); }
-  @Get(':id') @Requer('person.read') obter(@Param('id', ParseUUIDPipe) id: string, @Actor() u: Utilizador) { return this.svc.obter(id, u); }
+  @Get() @Requer('person.read') pesquisar(@Query('q') q: string | undefined, @Query('pagina') pagina: string | undefined, @Actor() u: Utilizador) {
+    return this.svc.pesquisar(u, q, 20, Math.max(0, (Number(pagina) || 1) - 1) * 20);
+  }
+  /** Ficha completa (dados decifrados): o acesso fica registado na auditoria (RGPD). */
+  @Get(':id') @Requer('person.read') obter(@Param('id', ParseUUIDPipe) id: string, @Actor() u: Utilizador) { return this.svc.obterComRegisto(id, u); }
   @Post() @Requer('person.manage') criar(@Body(new ZodPipe(PessoaDto)) b: PessoaDto, @Actor() u: Utilizador) { return this.svc.criar(b, u); }
   @Put(':id') @Requer('person.manage') actualizar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(PessoaDto)) b: PessoaDto, @Actor() u: Utilizador) { return this.svc.actualizar(id, b, u); }
 }

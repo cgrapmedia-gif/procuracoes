@@ -44,7 +44,7 @@ export interface BlocoRodape {
 
 export interface DefinicaoModelo {
   pagina: { formato: 'A4'; margens: { topo: number; direita: number; fundo: number; esquerda: number } }; // cm
-  tipografia: { fonte: string; fontesAlternativas?: string; tamanho: number; entrelinha: number; espacoParagrafo?: number; tamanhoTitulo?: number; espacoAssinaturas?: number };
+  tipografia: { fonte: string; fontesAlternativas?: string; tamanho: number; entrelinha: number; espacoParagrafo?: number; tamanhoTitulo?: number; espacoAssinaturas?: number; tamanhoAssinaturas?: number };
   preenchimento: { activo: boolean; caracter: '-' | '.' | '_' };
   poderes: ConfigPoderes;
   cabecalho: { logotipo?: string; logotipoLarguraCm?: number; linhas: LinhaCabecalho[]; filete?: Filete };

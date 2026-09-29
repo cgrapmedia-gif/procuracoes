@@ -57,6 +57,13 @@
       "when": 1790528110990,
       "tag": "0007_apagar_procuracoes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790535514952,
+      "tag": "0008_password_temporaria",
+      "breakpoints": true
     }
   ]
 }

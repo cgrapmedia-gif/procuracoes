@@ -71,7 +71,7 @@ export class PersonsService {
    *  - NIF e n.º de documento: correspondência exacta, sem espaços nem maiúsculas (índice cego — os números estão cifrados);
    *  - resultados ordenados pela semelhança ao texto pesquisado.
    */
-  async pesquisar(u: Utilizador, q?: string, limite = 20) {
+  async pesquisar(u: Utilizador, q?: string, limite = 20, deslocamento = 0) {
     const max = Math.min(limite, 50);
     const base = eq(persons.orgId, u.orgId);
     const t = q?.trim() ?? '';
@@ -79,14 +79,14 @@ export class PersonsService {
       const p = this.paraDominio(r);
       return { id: p.id, nomeCompleto: p.nomeCompleto, sexo: p.sexo, nacionalidade: p.nacionalidade, dataNascimento: p.dataNascimento, naturalidade: p.naturalidade, documento: { tipo: p.documento.tipo, numero: mascarar(p.documento.numero), validade: p.documento.validade, vitalicio: p.documento.vitalicio }, demo: p.demo };
     });
-    if (!t) return mapear(await this.db.select().from(persons).where(base).orderBy(desc(persons.updatedAt)).limit(max));
+    if (!t) return mapear(await this.db.select().from(persons).where(base).orderBy(desc(persons.updatedAt)).limit(max).offset(deslocamento));
     const norm = normalizarNome(t);
     const palavras = norm.split(' ').filter((w) => w.length >= 2).map((w) => w.replace(/[%_\\]/g, ''));
     const exactos = [eq(persons.nifBidx, this.crypto.blindIndex(t, 'nif')!), eq(persons.docNumberBidx, this.crypto.blindIndex(t, 'doc')!)];
     // Muitas palavras curtas com dezenas de milhares de pessoas: limita a ordenação por semelhança aos primeiros candidatos
     const porNome = palavras.length ? and(...palavras.map((w) => ilike(persons.searchName, `%${w}%`))) : undefined;
     const rows = await this.db.select().from(persons).where(and(base, or(...exactos, ...(porNome ? [porNome] : []))))
-      .orderBy(sql`similarity(${persons.searchName}, ${norm}) desc`, desc(persons.updatedAt)).limit(max);
+      .orderBy(sql`similarity(${persons.searchName}, ${norm}) desc`, desc(persons.updatedAt)).limit(max).offset(deslocamento);
     if (rows.length || norm.length < 3) return mapear(rows);
     // Sem resultados: tolera erros de escrita
     const semelhantes = await this.db.select().from(persons)
@@ -99,6 +99,12 @@ export class PersonsService {
     const [r] = await tx.select().from(persons).where(and(eq(persons.id, id), eq(persons.orgId, u.orgId)));
     if (!r) throw new NotFoundException('Pessoa não encontrada');
     return this.paraDominio(r);
+  }
+
+  async obterComRegisto(id: string, u: Utilizador) {
+    const p = await this.obter(id, u);
+    await this.db.transaction((tx) => this.audit.log(tx, u, 'PESSOA_CONSULTAR', 'person', id, {}));
+    return p;
   }
 
   async criar(d: PessoaDto, u: Utilizador, opts: { demo?: boolean; tx?: Tx } = {}) {
