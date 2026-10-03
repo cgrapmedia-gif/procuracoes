@@ -17,7 +17,7 @@ const SINONIMOS: Record<string, string[]> = {
   nacionalidade: ['nacionalidade'], naturalidade: ['naturalidade', 'natural_de'], estadoCivil: ['estado_civil'], conjuge: ['conjuge'], regimeBens: ['regime_bens', 'regime_de_bens'],
   profissao: ['profissao'], docTipo: ['doc_tipo', 'tipo_documento', 'tipo_de_documento'], docNumero: ['doc_numero', 'numero_documento', 'n_documento', 'bi', 'b_i', 'numero_bi', 'documento'],
   docEmissao: ['doc_emissao', 'data_emissao', 'emissao', 'emitido_em'], docValidade: ['doc_validade', 'validade', 'valido_ate'], docVitalicio: ['doc_vitalicio', 'vitalicio'],
-  nif: ['nif'], morada: ['morada', 'endereco'], codigoPostal: ['codigo_postal', 'cp'], localidade: ['localidade', 'cidade'], concelho: ['concelho', 'municipio'], distrito: ['distrito'], provincia: ['provincia'], pais: ['pais'],
+  nif: ['nif'], morada: ['morada', 'endereco'], codigoPostal: ['codigo_postal', 'cp'], localidade: ['localidade', 'cidade'], concelho: ['concelho', 'municipio', 'freguesia', 'bairro', 'comuna'], designacao: ['tipo_de_localidade', 'tipo_localidade', 'designacao'], distrito: ['distrito'], provincia: ['provincia'], pais: ['pais'],
   telefone: ['telefone', 'telemovel', 'contacto'], email: ['email', 'e_mail', 'correio_electronico', 'mail'], observacoes: ['observacoes', 'notas'],
 };
 
@@ -69,11 +69,15 @@ export function mapearLinhaPessoa(l: Linha): unknown {
     const vitalicio = ['sim', 's', 'true', '1', 'x'].includes(normalizarNome(String(g('docVitalicio') ?? '')));
     const moradaLinha = str('morada');
     const concelho = str('concelho'); const distrito = str('distrito');
+    // Tipo da localidade: coluna própria, ou deduzido do nome da coluna usada (Freguesia, Bairro, Município, Comuna)
+    const colLocal = SINONIMOS.concelho.find((c) => n[c] !== undefined && n[c] !== '');
+    const tipoTxt = normalizarNome(String(g('designacao') ?? colLocal ?? 'concelho'));
+    const designacao = tipoTxt.startsWith('bairro') ? 'BAIRRO' : tipoTxt.startsWith('fregues') ? 'FREGUESIA' : tipoTxt.startsWith('munic') ? 'MUNICIPIO' : tipoTxt.startsWith('comuna') ? 'COMUNA' : 'CONCELHO';
     return {
       nomeCompleto: str('nomeCompleto') ?? '', sexo: sexo(g('sexo')), dataNascimento: data(g('dataNascimento')), nacionalidade: (str('nacionalidade') ?? '').toLowerCase(),
       naturalidade: str('naturalidade'), estadoCivil: estadoCivil(g('estadoCivil')), conjuge: str('conjuge'), regimeBens: str('regimeBens'), profissao: str('profissao'),
       documento: { tipo: tipoDoc(g('docTipo')), numero: numeroDoc(str('docNumero')), dataEmissao: data(g('docEmissao')), validade: vitalicio ? null : data(g('docValidade')), vitalicio },
-      nif: str('nif'), morada: moradaLinha || concelho || distrito ? { linha: moradaLinha ?? '', codigoPostal: str('codigoPostal') ?? undefined, localidade: str('localidade') ?? undefined, concelho: concelho ?? undefined, distrito: distrito ?? undefined, provincia: str('provincia') ?? undefined, pais: str('pais') ?? undefined } : null,
+      nif: str('nif'), morada: moradaLinha || concelho || distrito ? { linha: moradaLinha ?? '', codigoPostal: str('codigoPostal') ?? undefined, localidade: str('localidade') ?? undefined, concelho: concelho ?? undefined, designacao, distrito: distrito ?? undefined, provincia: str('provincia') ?? undefined, pais: str('pais') ?? undefined } : null,
       telefone: str('telefone'), email: str('email'), observacoes: str('observacoes'),
     };
 }

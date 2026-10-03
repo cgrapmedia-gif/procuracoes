@@ -154,6 +154,8 @@ export const powersOfAttorney = pgTable('powers_of_attorney', {
   poaTypeId: uuid('poa_type_id').notNull().references(() => poaTypes.id), status: estadoPoaEnum('status').notNull().default('RASCUNHO'),
   actDate: date('act_date').notNull(), place: text('place').notNull(), officerId: uuid('officer_id').references(() => officers.id),
   actingMode: formaActuacaoEnum('acting_mode').notNull().default('ISOLADAMENTE'), actingCustom: text('acting_custom'),
+  /** Natureza dos poderes («poderes especiais», «os mais amplos poderes…»); vazio = «poderes necessários de representação». */
+  powersNature: text('powers_nature'),
   templateVersionId: uuid('template_version_id').notNull().references(() => templateVersions.id),
   snapshot: jsonb('snapshot'), contentHash: varchar('content_hash', { length: 64 }), verificationCode: varchar('verification_code', { length: 16 }),
   duplicatedFromId: uuid('duplicated_from_id'), lockVersion: integer('lock_version').notNull().default(1), isDemo: boolean('is_demo').notNull().default(false),

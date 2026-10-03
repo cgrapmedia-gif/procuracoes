@@ -1,7 +1,7 @@
 'use client';
 import { FormEvent, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { biAngolaValido, codigoPostalPTValido, emailValido } from '@proc/core/browser';
+import { biAngolaValido, codigoPostalPTValido, emailValido, DESIGNACOES_LOCALIDADE, DesignacaoLocalidade } from '@proc/core/browser';
 import { ApiError, api } from '@/lib/api';
 import { Campo, Gaveta, mensagemErro } from './ui';
 
@@ -9,7 +9,7 @@ export interface PessoaCompleta {
   id?: string; nomeCompleto: string; sexo: 'M' | 'F' | null; dataNascimento?: string | null; nacionalidade: string; naturalidade?: string | null;
   estadoCivil?: string | null; conjuge?: string | null; regimeBens?: string | null; profissao?: string | null;
   documento: { tipo: string; numero: string; dataEmissao?: string | null; validade?: string | null; vitalicio: boolean };
-  nif?: string | null; morada?: { linha: string; codigoPostal?: string; localidade?: string; concelho?: string; distrito?: string; provincia?: string; pais?: string } | null;
+  nif?: string | null; morada?: { linha: string; codigoPostal?: string; localidade?: string; concelho?: string; designacao?: DesignacaoLocalidade; distrito?: string; provincia?: string; pais?: string } | null;
   telefone?: string | null; email?: string | null; observacoes?: string | null;
 }
 const VAZIA: PessoaCompleta = { nomeCompleto: '', sexo: 'F', nacionalidade: 'angolana', documento: { tipo: 'BI_AO', numero: '', vitalicio: false }, morada: { linha: '', pais: 'Portugal' } };
@@ -44,7 +44,7 @@ export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial 
   const avisos = [
     !p.documento.numero?.trim() && 'sem número de documento',
     p.documento.numero?.trim() && p.documento.tipo === 'BI_AO' && !biAngolaValido(p.documento.numero) && 'n.º de BI com formato não habitual (esperado: 9 dígitos, 2 letras, 3 dígitos)',
-    !p.documento.vitalicio && !p.documento.validade && 'sem validade do documento',
+    !p.documento.vitalicio && !p.documento.validade && !p.documento.tipo.startsWith('CEDULA') && 'sem validade do documento',
     !p.sexo && 'sexo por indicar',
     !p.nacionalidade?.trim() && 'nacionalidade por indicar',
   ].filter(Boolean) as string[];
@@ -87,7 +87,7 @@ export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial 
         <h3>Documento de identificação</h3>
         <div className="linha-form">
           <Campo rotulo="Tipo" obrigatorio><select className="entrada" value={p.documento.tipo} onChange={(e) => setDoc({ tipo: e.target.value })}>{tipos.data?.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}</select></Campo>
-          <Campo rotulo="Número" erro={erros.doc}><input className="entrada mono" value={p.documento.numero ?? ''} onChange={(e) => setDoc({ numero: e.target.value.toUpperCase() })} aria-invalid={!!erros.doc} /></Campo>
+          <Campo rotulo={p.documento.tipo.startsWith('CEDULA') ? 'N.º da cédula profissional' : 'Número'} erro={erros.doc} ajuda={p.documento.tipo.startsWith('CEDULA') ? 'Advogados: a cédula substitui o BI no texto da procuração («portador da Cédula Profissional n.º …»).' : undefined}><input className="entrada mono" value={p.documento.numero ?? ''} onChange={(e) => setDoc({ numero: e.target.value.toUpperCase() })} aria-invalid={!!erros.doc} /></Campo>
         </div>
         <div className="linha-form">
           <Campo rotulo="Data de emissão" opcional><input className="entrada" type="date" value={p.documento.dataEmissao ?? ''} onChange={(e) => setDoc({ dataEmissao: e.target.value })} /></Campo>
@@ -99,7 +99,14 @@ export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial 
         <Campo rotulo="Morada" opcional><input className="entrada" value={p.morada?.linha ?? ''} onChange={(e) => setMor({ linha: e.target.value })} /></Campo>
         <div className="linha-form">
           <Campo rotulo="Código postal" opcional erro={erros.cp}><input className="entrada" value={p.morada?.codigoPostal ?? ''} onChange={(e) => setMor({ codigoPostal: e.target.value })} /></Campo>
-          <Campo rotulo="Localidade" opcional><input className="entrada" value={p.morada?.localidade ?? ''} onChange={(e) => setMor({ localidade: e.target.value })} /></Campo>
+        </div>
+        <div className="linha-form">
+          <Campo rotulo="Tipo de localidade" ajuda="Como aparece no documento: «bairro Prenda», «freguesia de Cedofeita», «município de Viana»…">
+            <select className="entrada" value={p.morada?.designacao ?? 'CONCELHO'} onChange={(e) => setMor({ designacao: e.target.value as DesignacaoLocalidade })}>{DESIGNACOES_LOCALIDADE.map(([v, r]) => <option key={v} value={v}>{r}</option>)}</select>
+          </Campo>
+          <Campo rotulo={DESIGNACOES_LOCALIDADE.find(([v]) => v === (p.morada?.designacao ?? 'CONCELHO'))?.[1] ?? 'Localidade'} opcional>
+            <input className="entrada" value={p.morada?.concelho ?? p.morada?.localidade ?? ''} onChange={(e) => setMor({ concelho: e.target.value, localidade: undefined })} />
+          </Campo>
         </div>
         <div className="linha-form">
           <Campo rotulo="Província" opcional><input className="entrada" value={p.morada?.provincia ?? ''} onChange={(e) => setMor({ provincia: e.target.value })} /></Campo>

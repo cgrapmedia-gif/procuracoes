@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { eq, inArray } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
+import { converterCatalogoJson, converterFolhaModelos, eCatalogoModelos } from './catalogo-modelos';
 import Papa from 'papaparse';
 import { AuditService } from '../common/audit.service';
 import { Utilizador } from '../common/http';
@@ -29,7 +30,12 @@ export class ImportService {
 
   async lerFicheiro(nome: string, buf: Buffer): Promise<Linha[]> {
     const ext = nome.toLowerCase().split('.').pop();
-    if (ext === 'json') { const j = JSON.parse(buf.toString('utf8')); if (!Array.isArray(j)) throw new BadRequestException('JSON deve ser uma lista'); return j; }
+    if (ext === 'json') {
+      const j = JSON.parse(decodificarTexto(buf).replace(/^\uFEFF/, ''));
+      if (eCatalogoModelos(j)) return converterCatalogoJson(j); // «Catálogo de Poderes — modelos» do posto
+      if (!Array.isArray(j)) throw new BadRequestException('JSON deve ser uma lista de poderes, ou o catálogo { catalogo, campos, modelos }');
+      return j;
+    }
     if (ext === 'csv') {
       const r = Papa.parse<Linha>(decodificarTexto(buf).replace(/^\uFEFF/, ''), { header: true, skipEmptyLines: true, delimitersToGuess: [',', ';', '\t'] });
       if (r.errors.length) throw new BadRequestException({ message: 'CSV inválido', erros: r.errors.slice(0, 20).map((e) => `linha ${(e.row ?? 0) + 2}: ${e.message}`) });
@@ -38,11 +44,13 @@ export class ImportService {
     if (ext === 'xlsx') {
       const wb = new ExcelJS.Workbook();
       await wb.xlsx.load(buf as unknown as ArrayBuffer);
-      const ws = wb.worksheets[0];
+      // Catálogo do posto: usa a folha «Modelos de Poderes»; caso contrário, a 1.ª folha
+      const folhaModelos = wb.worksheets.find((w) => /^modelos de poderes/i.test(w.name.trim()));
+      const ws = folhaModelos ?? wb.worksheets[0];
       const cab = (ws.getRow(1).values as unknown[]).slice(1).map((v) => String(v ?? '').trim());
       const out: Linha[] = [];
-      ws.eachRow((row, n) => { if (n === 1) return; const vals = (row.values as unknown[]).slice(1); const l: Linha = {}; cab.forEach((c, i) => { const v = vals[i] as { text?: string } | unknown; l[c] = typeof v === 'object' && v && 'text' in (v as object) ? (v as { text: string }).text : v; }); out.push(l); });
-      return out;
+      ws.eachRow((row, n) => { if (n === 1) return; const vals = (row.values as unknown[]).slice(1); const l: Linha = {}; cab.forEach((c, i) => { const v = vals[i] as { text?: string; result?: unknown; richText?: { text: string }[] } | unknown; l[c] = typeof v === 'object' && v && 'richText' in (v as object) ? (v as { richText: { text: string }[] }).richText.map((r) => r.text).join('') : typeof v === 'object' && v && 'text' in (v as object) ? (v as { text: string }).text : typeof v === 'object' && v && 'result' in (v as object) ? (v as { result: unknown }).result : v; }); out.push(l); });
+      return folhaModelos ? converterFolhaModelos(out) : out;
     }
     throw new BadRequestException('Formato não suportado (use .csv, .xlsx ou .json)');
   }

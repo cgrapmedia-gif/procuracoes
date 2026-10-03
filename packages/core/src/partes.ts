@@ -40,6 +40,9 @@ export const TIPOS_DOCUMENTO_OMISSAO: TipoDocumentoIdentificacao[] = [
   { codigo: 'PASSAPORTE_AO', nome: 'Passaporte (Angola)', modelo: 'Passaporte n.º {{numero}}, emitido pelo Serviço de Migração e Estrangeiros{{#if emissao}}, aos {{emissao}}{{/if}}{{#if validade}}, válido até {{validade}}{{/if}}' },
   { codigo: 'CC_PT', nome: 'Cartão de Cidadão (Portugal)', modelo: 'Cartão de Cidadão n.º {{numero}}{{#if validade}}, válido até {{validade}}{{/if}}' },
   { codigo: 'TR_PT', nome: 'Título de Residência (Portugal)', modelo: 'Título de Residência n.º {{numero}}, emitido pela AIMA{{#if validade}}, válido até {{validade}}{{/if}}' },
+  // Advogados: identificam-se pela cédula profissional (em vez do BI)
+  { codigo: 'CEDULA_OAA', nome: 'Cédula Profissional de Advogado (Angola)', modelo: 'Cédula Profissional n.º {{numero}}, emitida pela Ordem dos Advogados de Angola{{#if emissao}}, aos {{emissao}}{{/if}}{{#if validade}}, válida até {{validade}}{{/if}}' },
+  { codigo: 'CEDULA_OA_PT', nome: 'Cédula Profissional de Advogado (Portugal)', modelo: 'Cédula Profissional n.º {{numero}}, emitida pela Ordem dos Advogados portuguesa{{#if emissao}}, aos {{emissao}}{{/if}}{{#if validade}}, válida até {{validade}}{{/if}}' },
 ];
 
 export type FormaActuacao = 'ISOLADAMENTE' | 'CONJUNTAMENTE' | 'QUALQUER_UM' | 'DOIS_CONJUNTAMENTE' | 'PERSONALIZADA';
@@ -94,7 +97,8 @@ export function contextoPessoa(p: Pessoa, tipos: TipoDocumentoIdentificacao[] = 
     p.profissao,
     `de nacionalidade ${p.nacionalidade}`,
     p.naturalidade && `natural ${contracao(p.naturalidade, 'de')}`,
-    `${portador} do ${docTxt}`,
+    // «portador do Bilhete…», mas «portador da Cédula…» / «da Carta…»
+    `${portador} ${/^(c[ée]dula|carta|licen)/i.test(docTxt) ? 'da' : 'do'} ${docTxt}`,
     p.nif && `NIF ${p.nif}`,
     morada && `residente habitualmente ${contracao(morada, 'em')}`,
   ].filter(Boolean);

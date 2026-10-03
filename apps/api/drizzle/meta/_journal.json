@@ -64,6 +64,20 @@
       "when": 1790535514952,
       "tag": "0008_password_temporaria",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790932382648,
+      "tag": "0009_categoria_familia",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790933575136,
+      "tag": "0010_natureza_cedulas",
+      "breakpoints": true
     }
   ]
 }

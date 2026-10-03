@@ -20,7 +20,7 @@ export const PessoaDto = z.object({
   conjuge: z.string().max(200).nullish(), regimeBens: z.string().max(200).nullish(), profissao: z.string().max(120).nullish(),
   documento: z.object({ tipo: z.string().max(30).default('BI_AO'), numero: z.string().max(40).nullish(), dataEmissao: Data.nullish(), validade: Data.nullish(), vitalicio: z.boolean().default(false) }).default({ tipo: 'BI_AO', vitalicio: false }),
   nif: z.string().max(20).nullish(),
-  morada: z.object({ linha: z.string().max(300).default(''), codigoPostal: z.string().max(20).optional(), localidade: z.string().max(120).optional(), concelho: z.string().max(120).optional(), distrito: z.string().max(120).optional(), provincia: z.string().max(120).optional(), pais: z.string().max(60).optional() }).nullish(),
+  morada: z.object({ linha: z.string().max(300).default(''), codigoPostal: z.string().max(20).optional(), localidade: z.string().max(120).optional(), concelho: z.string().max(120).optional(), designacao: z.enum(['CONCELHO', 'MUNICIPIO', 'FREGUESIA', 'BAIRRO', 'COMUNA']).optional(), distrito: z.string().max(120).optional(), provincia: z.string().max(120).optional(), pais: z.string().max(60).optional() }).nullish(),
   telefone: z.string().max(200).nullish(), email: z.string().max(300).nullish(), observacoes: z.string().max(4000).nullish(),
 }).superRefine((p, ctx) => {
   if (!p.documento.vitalicio && p.documento.validade && p.documento.dataEmissao && p.documento.validade < p.documento.dataEmissao) ctx.addIssue({ code: 'custom', path: ['documento', 'validade'], message: 'Validade anterior à emissão' });

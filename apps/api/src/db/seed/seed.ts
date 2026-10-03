@@ -96,7 +96,7 @@ async function main() {
       { orgId: org.id, name: 'Oficial de Demonstração', title: 'Vice-Cônsul', userId: userIds.VALIDADOR },
       { orgId: org.id, name: 'Cônsul de Demonstração', title: 'Cônsul-Geral' },
     ]);
-    await tx.insert(s.identityDocumentTypes).values(TIPOS_DOCUMENTO_OMISSAO.map((t) => ({ code: t.codigo, name: t.nome, template: t.modelo })));
+    await tx.insert(s.identityDocumentTypes).values(TIPOS_DOCUMENTO_OMISSAO.map((t) => ({ code: t.codigo, name: t.nome, template: t.modelo }))).onConflictDoNothing();
     await tx.insert(s.entities).values([
       ['BANCO', 'Banco Demo Alfa, S.A.', 'BDA'], ['BANCO', 'Banco Demo Beta, S.A.', 'BDB'], ['BANCO', 'Banco Demo Gama, S.A.', 'BDG'],
       ['CONSERVATORIA', 'Conservatória do Registo Civil de Demonstração', null], ['TRIBUNAL', 'Tribunal Provincial de Demonstração', null],

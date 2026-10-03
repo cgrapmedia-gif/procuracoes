@@ -29,7 +29,9 @@ export const modeloConsular = (modo: 'PROSA' | 'LISTA'): DefinicaoModelo => {
   // Cada troço é um parágrafo que começa com "-----" e fecha com traços até ao fim da linha (como no Word do posto)
   const P = (texto: string, extra: Partial<{ seExiste: string }> = {}) => ({ tipo: 'paragrafo' as const, texto: `${T}${texto}`, preencher: true, ...extra });
   const constituicao =
-    `**Que,** pelo presente instrumento, ${O('constitui', 'constitui', 'constituem', 'constituem')} {{flex procuradores "seu bastante procurador" "sua bastante procuradora" "seus bastantes procuradores" "suas bastantes procuradoras"}} {{procuradoresIdentificacao}}{{#if formaActuacao}}, {{formaActuacao}}{{/if}}, a quem ${O('confere', 'confere', 'conferem', 'conferem')} poderes necessários de representação para`;
+    `**Que,** pelo presente instrumento, ${O('constitui', 'constitui', 'constituem', 'constituem')} {{flex procuradores "seu bastante procurador" "sua bastante procuradora" "seus bastantes procuradores" "suas bastantes procuradoras"}} {{procuradoresIdentificacao}}{{#if formaActuacao}}, {{formaActuacao}}{{/if}}, a quem`;
+  // «{{naturezaPoderes}}» = natureza escolhida na procuração (de representação, especiais, gerais, forenses…)
+  const formula = `${O('confere', 'confere', 'conferem', 'conferem')} {{naturezaPoderes}} para`;
 
   return {
     // Margens até à moldura (o texto fica 0,25 cm para dentro, como as bordas do Word): texto a 2,54 / 2,30 cm
@@ -53,7 +55,8 @@ export const modeloConsular = (modo: 'PROSA' | 'LISTA'): DefinicaoModelo => {
       P('{{outorgantesIdentificacao}}.'),
       P(`**VERIFIQUEI A IDENTIDADE ${O('DO OUTORGANTE', 'DA OUTORGANTE', 'DOS OUTORGANTES', 'DAS OUTORGANTES')}**, ${O('pelo mencionado documento que me foi apresentado e o restituí', 'pelo mencionado documento que me foi apresentado e a restituí', 'pelos mencionados documentos que me foram apresentados e os restituí', 'pelos mencionados documentos que me foram apresentados e as restituí')}.`),
       P(`**E POR ${O('ELE', 'ELA', 'ELES', 'ELAS')} FOI DITO**:`),
-      ...(modo === 'PROSA' ? [P(`${constituicao}, {{poderes}}`)] : [P(`${constituicao}:`), { tipo: 'poderes' as const }]),
+      // Se o texto dos poderes já traz a fórmula («confere os mais amplos poderes…», catálogo do posto), não se repete
+      ...(modo === 'PROSA' ? [P(`${constituicao} {{#if poderesComAbertura}}{{poderes}}{{else}}${formula}, {{poderes}}{{/if}}`)] : [P(`${constituicao} ${formula}:`), { tipo: 'poderes' as const }]),
       P('{{clausulas}}', { seExiste: 'clausulas' }),
       P(`**ASSIM O ${O('DISSE E OUTORGOU', 'DISSE E OUTORGOU', 'DISSERAM E OUTORGARAM', 'DISSERAM E OUTORGARAM')}**`),
       P(`${O('Ao outorgante', 'À outorgante', 'Aos outorgantes', 'Às outorgantes')} fiz, em voz alta e na sua presença a leitura e a explicação do conteúdo desta procuração.`),

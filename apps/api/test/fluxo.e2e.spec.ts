@@ -384,3 +384,25 @@ describe('Gestão de utilizadores', () => {
     await request(app.getHttpServer()).put(`/api/v1/admin/users/${me.id}`).set(auth('admin')).send({ activo: false }).expect(400);
   });
 });
+
+describe('Natureza dos poderes, cédula de advogado e tipo de localidade', () => {
+  it('a fórmula muda com a natureza escolhida; advogado identificado pela cédula; bairro na morada', async () => {
+    const adv = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('admin')).send({ nomeCompleto: 'Advogada Exemplo', sexo: 'F', nacionalidade: 'angolana', profissao: 'advogada', documento: { tipo: 'CEDULA_OAA', numero: '4321' }, morada: { linha: 'Rua 21, casa 5', concelho: 'Prenda', designacao: 'BAIRRO', provincia: 'Luanda', pais: 'Angola' } }).expect(201);
+    const out = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('admin')).send({ nomeCompleto: 'Outorgante Exemplo', sexo: 'M', nacionalidade: 'angolana', documento: { tipo: 'BI_AO', numero: '000000001LA012', validade: '2034-01-01' } }).expect(201);
+    const ofi = (await request(app.getHttpServer()).get('/api/v1/officers').set(auth('admin'))).body[0].id;
+    const c = await request(app.getHttpServer()).post('/api/v1/poas').set(auth('admin')).send({ tipoCodigo: 'JUDICIAL', dataActo: '2026-10-02', local: 'Porto', oficianteId: ofi }).expect(201);
+    const d = (await request(app.getHttpServer()).get(`/api/v1/poas/${c.body.id}`).set(auth('admin'))).body;
+    const v = (await request(app.getHttpServer()).get('/api/v1/powers').query({ q: 'ADM-003' }).set(auth('admin'))).body.itens[0].versaoId;
+    await request(app.getHttpServer()).put(`/api/v1/poas/${c.body.id}`).set(auth('admin')).send({
+      lockVersion: d.lockVersion, dataActo: '2026-10-02', local: 'Porto', oficianteId: ofi, formaActuacao: 'ISOLADAMENTE', naturezaPoderes: 'os mais amplos poderes forenses em direito permitidos',
+      outorgantes: [{ pessoaId: out.body.id }], procuradores: [{ pessoaId: adv.body.id }], poderes: [{ versaoId: v, valores: {} }],
+    }).expect(200);
+    const h = await request(app.getHttpServer()).get(`/api/v1/poas/${c.body.id}/preview.html`).set(auth('admin')).expect(200);
+    const texto = h.text.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ');
+    expect(texto).toContain('a quem confere os mais amplos poderes forenses em direito permitidos para');
+    expect(texto).toContain('portadora da Cédula Profissional n.º 4321, emitida pela Ordem dos Advogados de Angola');
+    expect(texto).toContain('residente habitualmente na Rua 21, casa 5, bairro Prenda, Província de Luanda – Angola');
+    const det = (await request(app.getHttpServer()).get(`/api/v1/poas/${c.body.id}`).set(auth('admin'))).body;
+    expect(det.naturezaPoderes).toBe('os mais amplos poderes forenses em direito permitidos');
+  });
+});

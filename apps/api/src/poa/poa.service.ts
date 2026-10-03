@@ -99,7 +99,7 @@ export class PoaService {
         } else await tx.insert(s.poaPowers).values({ poaId: id, position: i++, customName: x.personalizado.nome, customText: x.personalizado.texto });
       }
       await tx.update(s.powersOfAttorney).set({
-        actDate: d.dataActo, place: d.local, officerId: d.oficianteId ?? null, actingMode: d.formaActuacao, actingCustom: d.formaActuacaoPersonalizada ?? null,
+        actDate: d.dataActo, place: d.local, officerId: d.oficianteId ?? null, actingMode: d.formaActuacao, actingCustom: d.formaActuacaoPersonalizada ?? null, powersNature: d.naturezaPoderes || null,
         lockVersion: p.lockVersion + 1, updatedBy: u.id, updatedAt: new Date(),
       }).where(eq(s.powersOfAttorney.id, id));
       const depois = await this.resumo(tx, id);
@@ -152,7 +152,7 @@ export class PoaService {
       oficiante: { nome: oficiante?.name ?? '', cargo: oficiante?.title ?? '' },
       outorgantes: partes.filter((x) => x.role === 'OUTORGANTE').map((x) => ({ pessoa: pessoas.get(x.personId)!, qualidade: (x.capacity as DadosProcuracao['outorgantes'][0]['qualidade']) ?? undefined })),
       procuradores: partes.filter((x) => x.role === 'PROCURADOR').map((x) => pessoas.get(x.personId)!),
-      formaActuacao: poa.actingMode, formaActuacaoPersonalizada: poa.actingCustom ?? undefined,
+      formaActuacao: poa.actingMode, formaActuacaoPersonalizada: poa.actingCustom ?? undefined, naturezaPoderes: poa.powersNature ?? undefined,
       poderes: soPoderes, clausulas, demo: poa.isDemo,
     };
     return { poa, dados, modelo: tv.definition as DefinicaoModelo, tiposDoc, versoesActuais: Object.fromEntries(actuais.map((a) => [a.code, a.v])) };
@@ -218,7 +218,7 @@ export class PoaService {
       const [tipo] = await tx.select().from(s.poaTypes).where(eq(s.poaTypes.id, c.poa.poaTypeId));
       const [tpl] = await tx.select().from(s.documentTemplates).where(eq(s.documentTemplates.id, tipo.templateId));
       const [n] = await tx.insert(s.powersOfAttorney).values({
-        orgId: u.orgId, poaTypeId: c.poa.poaTypeId, actDate: new Date().toISOString().slice(0, 10), place: c.poa.place, officerId: c.poa.officerId, actingMode: c.poa.actingMode, actingCustom: c.poa.actingCustom,
+        orgId: u.orgId, poaTypeId: c.poa.poaTypeId, actDate: new Date().toISOString().slice(0, 10), place: c.poa.place, officerId: c.poa.officerId, actingMode: c.poa.actingMode, actingCustom: c.poa.actingCustom, powersNature: c.poa.powersNature,
         templateVersionId: tpl.currentVersionId!, duplicatedFromId: id, createdBy: u.id, isDemo: c.poa.isDemo,
       }).returning();
       const partes = await tx.select().from(s.poaParties).where(eq(s.poaParties.poaId, id));
@@ -273,7 +273,7 @@ export class PoaService {
     const mapa = (x: PoderSeleccionado) => ({ instanciaId: x.instanciaId, versaoId: x.versao.versaoId, codigo: x.versao.codigo, nome: x.versao.nome, versao: x.versao.numeroVersao, personalizado: !!x.personalizado, textoPersonalizado: x.personalizado ? x.versao.texto.replace(/\\\{\{/g, '{{') : undefined, usarAlternativo: !!x.usarAlternativo, campos: x.versao.campos, valores: x.valores });
     return {
       id, numero: c.poa.number, estado: c.poa.status, lockVersion: c.poa.lockVersion, tipo: c.dados.tipoProcuracao, dataActo: c.dados.dataActo, local: c.dados.local, oficianteId: c.poa.officerId,
-      formaActuacao: c.poa.actingMode, formaActuacaoPersonalizada: c.poa.actingCustom, demo: c.poa.isDemo, contentHash: c.poa.contentHash, codigoVerificacao: c.poa.verificationCode,
+      formaActuacao: c.poa.actingMode, formaActuacaoPersonalizada: c.poa.actingCustom, naturezaPoderes: c.poa.powersNature, demo: c.poa.isDemo, contentHash: c.poa.contentHash, codigoVerificacao: c.poa.verificationCode,
       outorgantes: c.dados.outorgantes.map((o) => ({ id: o.pessoa.id, nome: o.pessoa.nomeCompleto, sexo: o.pessoa.sexo, qualidade: o.qualidade && 'texto' in o.qualidade ? o.qualidade.texto : null })),
       procuradores: c.dados.procuradores.map((p) => ({ id: p.id, nome: p.nomeCompleto, sexo: p.sexo })),
       poderes: [...c.dados.poderes.map(mapa), ...clausulas.map((x) => ({ ...mapa(x), clausula: true }))],

@@ -10,11 +10,12 @@ import { Casca } from '@/components/Casca';
 import { Icone } from '@/components/Icone';
 import { Campo, EstadoBadge, Giro, Modal, mensagemErro, useToast } from '@/components/ui';
 import { DICAS, ETAPAS, EstadoEtapa, Etapas } from '@/components/assistente/Etapas';
-import { avaliarRegras, validarCampo } from '@proc/core/browser';
+import { TEM_ABERTURA, avaliarRegras, validarCampo } from '@proc/core/browser';
 import { paraMotor } from '@/components/assistente/rascunho';
 import { useRascunho } from '@/components/assistente/rascunho';
 import { EtapaPartes } from '@/components/assistente/EtapaPartes';
 import { DadosActo } from '@/components/assistente/DadosActo';
+import { NaturezaPoderes } from '@/components/assistente/NaturezaPoderes';
 import { Construtor } from '@/components/assistente/Construtor';
 import { EtapaConfiguracao } from '@/components/assistente/EtapaConfiguracao';
 import { EtapaArquivo, EtapaEmissao, EtapaPrevia, EtapaRevisao } from '@/components/assistente/EtapasFinais';
@@ -80,7 +81,10 @@ function Assistente({ id }: { id: string }) {
       <main className={largo ? '' : 'conteudo'} style={largo ? { display: 'flex', flexDirection: 'column' } : undefined}>
         {etapa === 2 && <><DadosActo r={r} actualizar={actualizar} editavel={!!editavel} oficiantes={oficiantes.data ?? []} /><EtapaPartes papel="outorgantes" r={r} actualizar={actualizar} editavel={!!editavel} /></>}
         {etapa === 3 && <EtapaPartes papel="procuradores" r={r} actualizar={actualizar} editavel={!!editavel} />}
-        {etapa === 4 && <Construtor r={r} actualizar={actualizar} catalogo={todos} categorias={categorias.data} tipoCodigo={d.tipo.codigo} editavel={!!editavel} />}
+        {etapa === 4 && <>
+          <NaturezaPoderes r={r} actualizar={actualizar} editavel={!!editavel} comAbertura={TEM_ABERTURA.test(porCodigo.get(r.itens.find((i) => !i.clausula)?.codigo ?? '')?.texto ?? '')} />
+          <Construtor r={r} actualizar={actualizar} catalogo={todos} categorias={categorias.data} tipoCodigo={d.tipo.codigo} editavel={!!editavel} />
+        </>}
         {etapa === 5 && <EtapaConfiguracao r={r} actualizar={actualizar} catalogo={todos} editavel={!!editavel} />}
         {etapa === 6 && <>
           <Construtor r={r} actualizar={actualizar} catalogo={todos} categorias={categorias.data} tipoCodigo={d.tipo.codigo} editavel={!!editavel} clausulas />

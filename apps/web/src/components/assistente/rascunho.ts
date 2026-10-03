@@ -6,13 +6,13 @@ import { uid } from '@/lib/formato';
 import { DetalheProcuracao, FormaActuacao, ItemRascunho, Parte, PoderCatalogo } from '@/lib/tipos';
 
 export interface Rascunho {
-  dataActo: string; local: string; oficianteId: string | null; formaActuacao: FormaActuacao; formaActuacaoPersonalizada: string | null;
+  dataActo: string; local: string; oficianteId: string | null; formaActuacao: FormaActuacao; formaActuacaoPersonalizada: string | null; naturezaPoderes: string | null;
   outorgantes: Parte[]; procuradores: Parte[]; itens: ItemRascunho[];
 }
 
 export function deDetalhe(d: DetalheProcuracao): Rascunho {
   return {
-    dataActo: d.dataActo, local: d.local, oficianteId: d.oficianteId, formaActuacao: d.formaActuacao, formaActuacaoPersonalizada: d.formaActuacaoPersonalizada,
+    dataActo: d.dataActo, local: d.local, oficianteId: d.oficianteId, formaActuacao: d.formaActuacao, formaActuacaoPersonalizada: d.formaActuacaoPersonalizada, naturezaPoderes: d.naturezaPoderes ?? null,
     outorgantes: d.outorgantes.map((o) => ({ pessoaId: o.id, nome: o.nome, sexo: o.sexo, qualidade: o.qualidade })),
     procuradores: d.procuradores.map((p) => ({ pessoaId: p.id, nome: p.nome, sexo: p.sexo })),
     itens: d.poderes.map((p) => ({
@@ -54,7 +54,7 @@ export function useRascunho(id: string, detalhe: DetalheProcuracao | undefined, 
     setEstado('a-guardar');
     try {
       const res = await api<{ lockVersion: number }>(`/poas/${id}`, { method: 'PUT', body: {
-        lockVersion: lock.current, dataActo: x.dataActo, local: x.local, oficianteId: x.oficianteId, formaActuacao: x.formaActuacao, formaActuacaoPersonalizada: x.formaActuacaoPersonalizada,
+        lockVersion: lock.current, dataActo: x.dataActo, local: x.local, oficianteId: x.oficianteId, formaActuacao: x.formaActuacao, formaActuacaoPersonalizada: x.formaActuacaoPersonalizada, naturezaPoderes: x.naturezaPoderes,
         outorgantes: x.outorgantes.map((o) => ({ pessoaId: o.pessoaId, qualidade: o.qualidade || null })), procuradores: x.procuradores.map((p) => ({ pessoaId: p.pessoaId })),
         poderes: x.itens.map((i) => (i.personalizado && !i.versaoId ? { personalizado: i.personalizado } : { versaoId: i.versaoId!, usarAlternativo: i.usarAlternativo, valores: i.valores })),
       } });

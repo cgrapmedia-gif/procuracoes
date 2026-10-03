@@ -90,6 +90,8 @@ export interface DadosProcuracao {
   procuradores: Pessoa[];
   formaActuacao: FormaActuacao;
   formaActuacaoPersonalizada?: string;
+  /** Natureza dos poderes conferidos (ex.: «poderes especiais»). Por omissão: «poderes necessários de representação». */
+  naturezaPoderes?: string;
   poderes: PoderSeleccionado[];     // já pela ordem final
   clausulas: PoderSeleccionado[];   // cláusulas finais (catálogo versionado, tipo CLAUSULA), pela ordem escolhida
   demo?: boolean;
@@ -107,6 +109,8 @@ export interface Contexto {
   procuradoresIdentificacao: string;
   formaActuacao: string;
   poderes: string;
+  poderesComAbertura: boolean;
+  naturezaPoderes: string;
   clausulas: string;
 }
 
@@ -128,6 +132,9 @@ export function construirContexto(d: DadosProcuracao, tipos: TipoDocumentoIdenti
     procuradoresIdentificacao: identificacaoConjunta(procuradores),
     formaActuacao: formaActuacaoTexto(d.formaActuacao, procuradores.length, d.formaActuacaoPersonalizada),
     poderes: prosa,
+    // Texto de poderes que já traz a sua fórmula de concessão («confere os mais amplos poderes…»): o modelo não a repete
+    poderesComAbertura: TEM_ABERTURA.test(prosa || alineas[0]?.texto || ''),
+    naturezaPoderes: d.naturezaPoderes?.trim() || NATUREZA_OMISSAO,
     clausulas: d.clausulas.map((c) => renderizarPoder(c, base, { preVisualizacao: opts.preVisualizacao })).map((t) => (/[.!?]$/.test(t) ? t : `${t}.`)).join(' '),
   };
   return { ctx, alineas };
@@ -151,6 +158,21 @@ export function parseRuns(texto: string): Run[] {
 function obterCaminho(o: unknown, caminho: string): unknown {
   return caminho.split('.').reduce<unknown>((acc, k) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[k] : undefined), o);
 }
+
+/** Natureza dos poderes: o texto que entra em «a quem confere … para». */
+export const NATUREZA_OMISSAO = 'poderes necessários de representação';
+export const NATUREZAS_PODERES: [string, string, string][] = [
+  ['REPRESENTACAO', 'De representação', 'poderes necessários de representação'],
+  ['ESPECIAIS', 'Especiais', 'poderes especiais'],
+  ['AMPLOS_ESPECIAIS', 'Os mais amplos e especiais', 'os mais amplos e especiais poderes'],
+  ['GERAIS', 'Gerais', 'poderes gerais'],
+  ['AMPLOS', 'Os mais amplos em direito permitidos', 'os mais amplos poderes em direito permitidos'],
+  ['FORENSES', 'Forenses (advogados)', 'os mais amplos poderes forenses em direito permitidos'],
+  ['ADMINISTRACAO', 'De administração', 'poderes de administração'],
+];
+
+/** Textos de poderes que começam pela própria fórmula de concessão (ex.: catálogo de modelos do posto). */
+export const TEM_ABERTURA = /^\s*(conferem?|concede|com\s+(os|as|o|a)\b|dando\b)/i;
 
 export function construirDocumento(modelo: DefinicaoModelo, dados: DadosProcuracao, opts: { preVisualizacao?: boolean; tipos?: TipoDocumentoIdentificacao[] } = {}): DocumentoRenderizado {
   const { ctx, alineas } = construirContexto(dados, opts.tipos, { preVisualizacao: opts.preVisualizacao, cfgPoderes: modelo.poderes });

@@ -1,5 +1,5 @@
 'use client';
-import { DefinicaoCampo, Imovel, Morada, RefEntidade, ValorCampo, Veiculo, Empresa, formatarIban, moedaCompleta, validarCampo } from '@proc/core/browser';
+import { DESIGNACOES_LOCALIDADE, DefinicaoCampo, DesignacaoLocalidade, Imovel, Morada, RefEntidade, ValorCampo, Veiculo, Empresa, formatarIban, moedaCompleta, validarCampo } from '@proc/core/browser';
 import { SeletorPessoa } from '../SeletorPessoa';
 import { SeletorEntidade } from '../SeletorEntidade';
 import { PessoaGaveta } from '../PessoaForm';
@@ -45,7 +45,16 @@ export function CampoDinamico({ def, valor, mudar, dataActo, desactivado }: { de
       return <Campo {...props} ajuda={def.ajuda ?? 'Se não estiver na lista, acrescente-a sem sair da procuração.'}><SeletorEntidade tipo={tipoEnt} rotulo={def.rotulo} valor={v} desactivado={desactivado} mudar={(x) => mudar(x)} /></Campo>;
     }
     case 'PESSOA': return <CampoPessoa def={def} valor={valor as RefEntidade | undefined} mudar={mudar} desactivado={desactivado} props={props} />;
-    case 'MORADA': return <div className="campo"><span>{def.rotulo}</span><Sub campos={[['linha', 'Morada', true], ['codigoPostal', 'Código postal'], ['localidade', 'Localidade'], ['pais', 'País']]} valor={(valor as unknown as Record<string, string>) ?? {}} mudar={(v) => mudar(v as unknown as Morada)} /></div>;
+    case 'MORADA': {
+      const m = (valor as unknown as Morada) ?? { linha: '' };
+      return <div className="campo"><span>{def.rotulo}</span>
+        <Sub campos={[['linha', 'Morada', true], ['codigoPostal', 'Código postal']]} valor={(valor as unknown as Record<string, string>) ?? {}} mudar={(v) => mudar(v as unknown as Morada)} />
+        <div className="linha-form">
+          <label className="campo"><span>Tipo de localidade</span><select className="entrada" disabled={desactivado} value={m.designacao ?? 'CONCELHO'} onChange={(e) => mudar({ ...m, designacao: e.target.value as DesignacaoLocalidade } as unknown as ValorCampo)}>{DESIGNACOES_LOCALIDADE.map(([v, r]) => <option key={v} value={v}>{r}</option>)}</select></label>
+          <label className="campo"><span>{DESIGNACOES_LOCALIDADE.find(([v]) => v === (m.designacao ?? 'CONCELHO'))?.[1]}</span><input className="entrada" disabled={desactivado} value={m.concelho ?? m.localidade ?? ''} onChange={(e) => mudar({ ...m, concelho: e.target.value, localidade: undefined } as unknown as ValorCampo)} /></label>
+        </div>
+        <Sub campos={[['provincia', 'Província'], ['pais', 'País']]} valor={(valor as unknown as Record<string, string>) ?? {}} mudar={(v) => mudar(v as unknown as Morada)} /></div>;
+    }
     case 'IMOVEL': return <div className="campo"><span>{def.rotulo}{def.obrigatorio && <span className="obrig"> *</span>}</span><Sub campos={[['tipo', 'Tipo (ex.: prédio urbano)'], ['morada', 'Localização', true], ['freguesia', 'Freguesia'], ['concelho', 'Concelho'], ['artigoMatricial', 'Artigo matricial'], ['conservatoria', 'Conservatória'], ['descricaoPredial', 'Descrição predial n.º']]} valor={(valor as unknown as Record<string, string>) ?? {}} mudar={(v) => mudar(v as unknown as Imovel)} />{erro && <span className="erro">{erro}</span>}</div>;
     case 'VEICULO': return <div className="campo"><span>{def.rotulo}</span><Sub campos={[['marca', 'Marca', true], ['modelo', 'Modelo'], ['matricula', 'Matrícula', true], ['quadro', 'N.º de quadro']]} valor={(valor as unknown as Record<string, string>) ?? {}} mudar={(v) => mudar(v as unknown as Veiculo)} />{erro && <span className="erro">{erro}</span>}</div>;
     case 'EMPRESA': return <div className="campo"><span>{def.rotulo}</span><Sub campos={[['denominacao', 'Denominação', true], ['nif', 'NIF'], ['sede', 'Sede'], ['matricula', 'Matrícula']]} valor={(valor as unknown as Record<string, string>) ?? {}} mudar={(v) => mudar(v as unknown as Empresa)} />{erro && <span className="erro">{erro}</span>}</div>;

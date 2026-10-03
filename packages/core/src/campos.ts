@@ -25,7 +25,10 @@ export interface DefinicaoCampo {
   textoFalso?: string;
 }
 
-export interface Morada { linha: string; codigoPostal?: string; localidade?: string; concelho?: string; distrito?: string; provincia?: string; pais?: string }
+/** Como se designa a localidade principal da morada (Portugal: freguesia/concelho; Angola: bairro/comuna/município). */
+export type DesignacaoLocalidade = 'CONCELHO' | 'MUNICIPIO' | 'FREGUESIA' | 'BAIRRO' | 'COMUNA';
+export const DESIGNACOES_LOCALIDADE: [DesignacaoLocalidade, string][] = [['CONCELHO', 'Concelho'], ['MUNICIPIO', 'Município'], ['FREGUESIA', 'Freguesia'], ['BAIRRO', 'Bairro'], ['COMUNA', 'Comuna']];
+export interface Morada { linha: string; codigoPostal?: string; localidade?: string; concelho?: string; designacao?: DesignacaoLocalidade; distrito?: string; provincia?: string; pais?: string }
 export interface Imovel { tipo?: string; morada: string; freguesia?: string; concelho?: string; artigoMatricial?: string; conservatoria?: string; descricaoPredial?: string }
 export interface Veiculo { marca: string; modelo?: string; matricula: string; quadro?: string }
 export interface Empresa { denominacao: string; nif?: string; sede?: string; matricula?: string }
@@ -121,7 +124,11 @@ export function formatarMorada(m: Morada): string {
   const partes = [m.linha?.trim()];
   if (m.codigoPostal) partes.push(`Código Postal ${m.codigoPostal.trim()}`);
   const concelho = m.concelho?.trim() || m.localidade?.trim();
-  if (concelho) partes.push(`concelho de ${concelho}`);
+  if (concelho) {
+    const d = m.designacao ?? 'CONCELHO';
+    // «bairro Prenda», mas «freguesia de Cedofeita», «município de Viana», «concelho de Maia», «comuna de Catete»
+    partes.push(d === 'BAIRRO' ? `bairro ${concelho}` : `${d === 'MUNICIPIO' ? 'município' : d.toLowerCase()} de ${concelho}`);
+  }
   if (m.provincia) partes.push(`Província de ${m.provincia.trim()}`);
   const base = partes.filter(Boolean).join(', ');
   return m.pais?.trim() ? `${base} – ${m.pais.trim()}` : base;

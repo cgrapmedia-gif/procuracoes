@@ -29,6 +29,7 @@ export const CATEGORIAS_NOVAS: [string, string][] = [
   ['NACIONALIDADE', 'Nacionalidade, migração e legalizações'],
   ['DOACOES', 'Doações'],
   ['SAUDE_EDUCACAO', 'Saúde e educação'],
+  ['FAMILIA', 'Família (casamento, divórcio, regime de bens)'],
 ];
 
 const p = (codigo: string, categoria: string, nome: string, texto: string, extra: Partial<PoderDemo> = {}): PoderDemo =>

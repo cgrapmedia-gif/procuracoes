@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { comporPoderes, renderizarPoder, validarCampo } from '@proc/core/browser';
+import { comporPoderes, renderizarPoder, validarCampo, TEM_ABERTURA, NATUREZA_OMISSAO } from '@proc/core/browser';
 import { PoderCatalogo } from '@/lib/tipos';
 import { Icone } from '../Icone';
 import { Vazio } from '../ui';
@@ -57,7 +57,7 @@ export function EtapaConfiguracao({ r, actualizar, catalogo, editavel, clausulas
       <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 80 }}>
         <section className="cartao"><div className="corpo">
           <h2>Texto em tempo real</h2>
-          <p className="texto-juridico" style={{ fontSize: 13, textAlign: 'justify' }}>{!clausulas && '… a quem confere poderes necessários de representação para, '}{previo.html.map((p, k) => (p.campo ? <mark key={k}>[{p.t}]</mark> : p.negrito ? <b key={k}>{p.t}</b> : <span key={k}>{p.t}</span>))}{!clausulas && '.'}</p>
+          <p className="texto-juridico" style={{ fontSize: 13, textAlign: 'justify' }}>{!clausulas && (TEM_ABERTURA.test(previo.html.map((p) => p.t).join('')) ? '… a quem ' : `… a quem confere ${r.naturezaPoderes?.trim() || NATUREZA_OMISSAO} para, `)}{previo.html.map((p, k) => (p.campo ? <mark key={k}>[{p.t}]</mark> : p.negrito ? <b key={k}>{p.t}</b> : <span key={k}>{p.t}</span>))}{!clausulas && '.'}</p>
           <span className="small muted">Os campos por preencher aparecem destacados. A concordância usa o sexo registado das partes.</span>
         </div></section>
         <section className="cartao"><div className="corpo" style={{ gap: 6 }}>

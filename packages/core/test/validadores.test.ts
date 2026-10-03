@@ -39,3 +39,17 @@ describe('estilo do posto (morada, preposições, entidades)', () => {
     expect(formatarCampo(def, { id: '1', nome: 'Banco Demo, S.A.' })).toBe('**BANCO DEMO, S.A.**');
   });
 });
+
+import { contextoPessoa, NATUREZAS_PODERES } from '../src';
+describe('localidade, cédula de advogado e natureza dos poderes', () => {
+  it('designação da localidade', () => {
+    expect(formatarMorada({ linha: 'Rua 21, casa 5', concelho: 'Prenda', designacao: 'BAIRRO', provincia: 'Luanda', pais: 'Angola' })).toBe('Rua 21, casa 5, bairro Prenda, Província de Luanda – Angola');
+    expect(formatarMorada({ linha: 'Rua X, 1', codigoPostal: '4050-160', concelho: 'Cedofeita', designacao: 'FREGUESIA' })).toBe('Rua X, 1, Código Postal 4050-160, freguesia de Cedofeita');
+    expect(formatarMorada({ linha: 'Rua Y', concelho: 'Viana', designacao: 'MUNICIPIO' })).toBe('Rua Y, município de Viana');
+  });
+  it('advogado identificado pela cédula profissional («portadora da Cédula…»)', () => {
+    const c = contextoPessoa({ id: 'x', nomeCompleto: 'Dra. Exemplo', sexo: 'F', nacionalidade: 'angolana', profissao: 'advogada', documento: { tipo: 'CEDULA_OAA', numero: '1234' } } as never);
+    expect(c.identificacao).toContain('portadora da Cédula Profissional n.º 1234, emitida pela Ordem dos Advogados de Angola');
+  });
+  it('naturezas disponíveis', () => { expect(NATUREZAS_PODERES.map((n) => n[0])).toContain('ESPECIAIS'); });
+});

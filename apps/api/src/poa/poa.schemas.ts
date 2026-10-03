@@ -13,6 +13,7 @@ export const GuardarProcuracao = z.object({
   dataActo: Data, local: z.string().min(2).max(120), oficianteId: z.string().uuid().nullish(),
   formaActuacao: z.enum(['ISOLADAMENTE', 'CONJUNTAMENTE', 'QUALQUER_UM', 'DOIS_CONJUNTAMENTE', 'PERSONALIZADA']),
   formaActuacaoPersonalizada: z.string().max(500).nullish(),
+  naturezaPoderes: z.string().trim().max(300).nullish(),
   outorgantes: z.array(z.object({ pessoaId: z.string().uuid(), qualidade: z.string().max(500).nullish() })).min(1).max(10),
   procuradores: z.array(z.object({ pessoaId: z.string().uuid() })).min(1).max(10),
   poderes: z.array(PoderInput).max(300), // a ordem do array é a ordem no documento
