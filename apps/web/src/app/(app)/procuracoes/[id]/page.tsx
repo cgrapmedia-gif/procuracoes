@@ -27,7 +27,7 @@ function Assistente({ id }: { id: string }) {
   const det = useQuery({ queryKey: ['poa', id], queryFn: () => api<DetalheProcuracao>(`/poas/${id}`) });
   const editavel = det.data?.estado === 'RASCUNHO' && pode('poa.edit');
   const etapa = Math.min(10, Math.max(2, Number(sp.get('etapa') ?? (det.data && det.data.estado !== 'RASCUNHO' ? 9 : 2))));
-  const catalogo = useQuery({ queryKey: ['catalogo', det.data?.tipo.codigo], queryFn: () => api<{ itens: PoderCatalogo[] }>(`/powers?limite=200&tipoProcuracao=${det.data!.tipo.codigo}`).then((x) => x.itens), enabled: !!det.data });
+  const catalogo = useQuery({ queryKey: ['catalogo', det.data?.tipo.codigo], queryFn: () => api<{ itens: PoderCatalogo[] }>(`/powers?limite=3000&tipoProcuracao=${det.data!.tipo.codigo}`).then((x) => x.itens), enabled: !!det.data });
   const clausulasQ = useQuery({ queryKey: ['catalogo', 'CLAUSULA'], queryFn: () => api<{ itens: PoderCatalogo[] }>('/powers?limite=200&tipo=CLAUSULA').then((x) => x.itens) });
   const categorias = useQuery({ queryKey: ['categorias'], queryFn: () => api<Categoria[]>('/power-categories') });
   const oficiantes = useQuery({ queryKey: ['officers'], queryFn: () => api<{ id: string; nome: string; cargo: string }[]>('/officers') });
@@ -76,6 +76,7 @@ function Assistente({ id }: { id: string }) {
         {estado === 'conflito' && <div className="aviso erro"><span style={{ flex: 1 }}>Esta procuração foi alterada noutro posto. Recarregue para continuar sem perder o trabalho do outro utilizador.</span><button className="btn pequeno" onClick={() => window.location.reload()}>Recarregar</button></div>}
         {estado === 'erro' && <div className="aviso erro">{erro}</div>}
         <Etapas actual={etapa} id={id} bloqueadas={d.estado !== 'RASCUNHO'} estados={estados} />
+        {det.data?.rectifica && <div className="aviso atencao">Correcção da procuração <b className="mono">{det.data.rectifica.numero}</b>. Ao emitir, fica com o mesmo número e o sufixo «-R…», e a original é cancelada automaticamente.</div>}
         {DICAS[etapa] && d.estado === 'RASCUNHO' && <p className="dica" style={{ margin: 0 }}><Icone n="ideia" t={15} cor="var(--ouro)" />{DICAS[etapa]}</p>}
       </div>
       <main className={largo ? '' : 'conteudo'} style={largo ? { display: 'flex', flexDirection: 'column' } : undefined}>
@@ -91,7 +92,7 @@ function Assistente({ id }: { id: string }) {
           {r.itens.some((i) => i.clausula && i.campos.length) && <div className="conteudo"><h2>Configurar cláusulas</h2><EtapaConfiguracao r={r} actualizar={actualizar} catalogo={todos} editavel={!!editavel} clausulas /></div>}
         </>}
         {etapa === 7 && <EtapaRevisao id={id} det={d} v={verif.data} oficiante={ofi ? `${ofi.nome}, ${ofi.cargo}` : undefined} />}
-        {etapa === 8 && <EtapaPrevia id={id} versao={d.lockVersion} />}
+        {etapa === 8 && <EtapaPrevia id={id} versao={d.lockVersion} editavel={!!editavel} actualizar={actualizar} />}
         {etapa === 9 && <EtapaEmissao id={id} det={d} v={verif.data} aoMudar={recarregar} />}
         {etapa === 10 && <EtapaArquivo id={id} det={d} aoMudar={recarregar} />}
         <div className="rodape-assistente" style={{ padding: largo ? '16px 32px 32px' : undefined }}>

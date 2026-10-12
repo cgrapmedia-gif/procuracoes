@@ -156,6 +156,10 @@ export const powersOfAttorney = pgTable('powers_of_attorney', {
   actingMode: formaActuacaoEnum('acting_mode').notNull().default('ISOLADAMENTE'), actingCustom: text('acting_custom'),
   /** Natureza dos poderes («poderes especiais», «os mais amplos poderes…»); vazio = «poderes necessários de representação». */
   powersNature: text('powers_nature'),
+  /** Rectificação: procuração emitida que esta substitui (número passa a ser «NÚMERO-R1»). */
+  rectifiesId: uuid('rectifies_id'),
+  /** Ajustes manuais ao texto gerado: [{ indice, original, texto }]. */
+  textOverrides: jsonb('text_overrides'),
   templateVersionId: uuid('template_version_id').notNull().references(() => templateVersions.id),
   snapshot: jsonb('snapshot'), contentHash: varchar('content_hash', { length: 64 }), verificationCode: varchar('verification_code', { length: 16 }),
   duplicatedFromId: uuid('duplicated_from_id'), lockVersion: integer('lock_version').notNull().default(1), isDemo: boolean('is_demo').notNull().default(false),

@@ -20,7 +20,10 @@ export interface Parte { pessoaId: string; nome: string; sexo: 'M' | 'F' | null;
 
 export interface DetalheProcuracao {
   id: string; numero: string | null; estado: Estado; lockVersion: number; tipo: { codigo: string; nome: string }; dataActo: string; local: string; oficianteId: string | null;
-  formaActuacao: FormaActuacao; formaActuacaoPersonalizada: string | null; naturezaPoderes: string | null; demo: boolean; contentHash: string | null; codigoVerificacao: string | null;
+  formaActuacao: FormaActuacao; formaActuacaoPersonalizada: string | null; naturezaPoderes: string | null; demo: boolean;
+  ajustesTexto: { indice: number; original: string; texto: string }[];
+  rectifica: { id: string; numero: string | null } | null;
+  rectificadaPor: { id: string; numero: string | null; estado: string } | null; contentHash: string | null; codigoVerificacao: string | null;
   outorgantes: { id: string; nome: string; sexo: 'M' | 'F' | null; qualidade: string | null }[];
   procuradores: { id: string; nome: string; sexo: 'M' | 'F' | null }[];
   poderes: { instanciaId: string; versaoId: string; codigo: string; nome: string; versao: number; personalizado: boolean; textoPersonalizado?: string; usarAlternativo: boolean; campos: DefinicaoCampo[]; valores: Record<string, ValorCampo>; clausula?: boolean }[];

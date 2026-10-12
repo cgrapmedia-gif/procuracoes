@@ -47,5 +47,5 @@ export const PesquisaPoderes = z.object({
   tipoProcuracao: z.string().optional(),
   /** Gestão: incluir poderes ainda sem versão publicada (mostra a última versão). */
   rascunhos: z.enum(['true', 'false', 'so']).optional(),
-  limite: z.coerce.number().int().min(1).max(200).default(50), pagina: z.coerce.number().int().min(1).default(1),
+  limite: z.coerce.number().int().min(1).max(3000).default(50), pagina: z.coerce.number().int().min(1).default(1),
 });

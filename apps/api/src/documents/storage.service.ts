@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { access, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -30,6 +30,14 @@ export class StorageService {
   async get(key: string): Promise<Buffer> {
     if (this.s3) { const r = await this.s3.send(new GetObjectCommand({ Bucket: this.cfg.S3_BUCKET, Key: key })); return Buffer.from(await r.Body!.transformToByteArray()); }
     return readFile(this.local(key));
+  }
+
+  /** Indica se o objecto existe (sem o descarregar). */
+  async existe(key: string): Promise<boolean> {
+    try {
+      if (this.s3) { await this.s3.send(new HeadObjectCommand({ Bucket: this.cfg.S3_BUCKET, Key: key })); return true; }
+      await access(this.local(key)); return true;
+    } catch { return false; }
   }
 
   /** Apaga um objecto (ignora se já não existir). */

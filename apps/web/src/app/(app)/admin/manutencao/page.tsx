@@ -11,6 +11,8 @@ export default function Manutencao() {
   const toast = useToast(); const qc = useQueryClient();
   const total = useQuery({ queryKey: ['poas', 'total'], queryFn: () => api<{ total: number }>('/poas?limite=1') });
   const [f, setF] = useState({ motivo: '', confirmacao: '', reiniciarNumeracao: true }); const [a, setA] = useState(false);
+  const [rep, setRep] = useState<{ verificadas: number; regeneradas: number; digitalizacoesEmFalta: string[]; erros: string[] } | null>(null); const [aReparar, setAR] = useState(false);
+  async function reparar() { setAR(true); try { setRep(await api('/admin/repair-documents', { method: 'POST' })); } catch (e) { toast(mensagemErro(e), true); } finally { setAR(false); } }
   const [feito, setFeito] = useState<{ apagadas: number; ficheiros: number; numeracaoReiniciada: boolean } | null>(null);
   async function apagar() {
     setA(true);
@@ -21,6 +23,16 @@ export default function Manutencao() {
     <Casca migalhas={['Administração', 'Manutenção']}>
       <main className="conteudo" style={{ maxWidth: 760 }}>
         <div><h1>Manutenção</h1><span className="muted">Operações irreversíveis, reservadas a administradores. Ficam registadas na auditoria, que nunca é apagada.</span></div>
+        <section className="cartao"><div className="corpo">
+          <h2 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Icone n="escudo" t={18} />Verificar e reparar documentos</h2>
+          <p style={{ margin: 0 }}>Confirma que o PDF de cada procuração emitida está guardado. Os que se perderam (por exemplo, quando o servidor guardava ficheiros em disco temporário) são gerados de novo a partir do registo congelado na emissão: o texto é exactamente o mesmo. Cada reparação fica na auditoria.</p>
+          {rep && <div className={`aviso ${rep.erros.length ? 'atencao' : 'ok'}`} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            <span>Verificadas {rep.verificadas} procurações; <b>{rep.regeneradas}</b> PDF regenerados.</span>
+            {rep.digitalizacoesEmFalta.length > 0 && <span className="small">Digitalizações assinadas em falta (voltar a carregar no passo Arquivo): {rep.digitalizacoesEmFalta.join(', ')}</span>}
+            {rep.erros.length > 0 && <span className="small">Erros: {rep.erros.join('; ')}</span>}
+          </div>}
+          <button className="btn primario" style={{ alignSelf: 'flex-start' }} disabled={aReparar} onClick={reparar}>{aReparar ? 'A verificar…' : 'Verificar e reparar agora'}</button>
+        </div></section>
         <section className="cartao" style={{ borderColor: 'var(--carmim)' }}><div className="corpo">
           <h2 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Icone n="lixo" t={18} cor="var(--carmim)" />Apagar todas as procurações</h2>
           <p style={{ margin: 0 }}>Apaga <b>{total.data?.total ?? '…'}</b> procurações (rascunhos, emitidas, canceladas e arquivadas) e todos os seus documentos: PDF, DOCX e digitalizações assinadas. Pessoas, poderes, modelos e utilizadores <b>não</b> são apagados.</p>

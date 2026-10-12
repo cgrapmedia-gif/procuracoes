@@ -6,7 +6,7 @@ export const CriarProcuracao = z.object({
 });
 export const PoderInput = z.union([
   z.object({ versaoId: z.string().uuid(), usarAlternativo: z.boolean().default(false), valores: z.record(z.unknown()).default({}) }),
-  z.object({ personalizado: z.object({ nome: z.string().min(3).max(200), texto: z.string().min(3).max(5000) }) }),
+  z.object({ personalizado: z.object({ nome: z.string().min(1).max(200), texto: z.string().min(3).max(20000) }) }),
 ]);
 export const GuardarProcuracao = z.object({
   lockVersion: z.number().int(),
@@ -14,6 +14,10 @@ export const GuardarProcuracao = z.object({
   formaActuacao: z.enum(['ISOLADAMENTE', 'CONJUNTAMENTE', 'QUALQUER_UM', 'DOIS_CONJUNTAMENTE', 'PERSONALIZADA']),
   formaActuacaoPersonalizada: z.string().max(500).nullish(),
   naturezaPoderes: z.string().trim().max(300).nullish(),
+  /** Mudar o tipo de procuração enquanto é rascunho. */
+  tipoCodigo: z.string().max(40).optional(),
+  /** Ajustes manuais ao texto do documento. */
+  ajustesTexto: z.array(z.object({ indice: z.number().int().min(0).max(500), original: z.string().max(30000), texto: z.string().max(30000) })).max(200).nullish(),
   outorgantes: z.array(z.object({ pessoaId: z.string().uuid(), qualidade: z.string().max(500).nullish() })).min(1).max(10),
   procuradores: z.array(z.object({ pessoaId: z.string().uuid() })).min(1).max(10),
   poderes: z.array(PoderInput).max(300), // a ordem do array é a ordem no documento

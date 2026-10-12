@@ -31,9 +31,9 @@ export const PERMISSOES: [string, string][] = [
 ];
 export const PERFIS: Record<string, { nome: string; perms: string[] | 'todas' }> = {
   ADMINISTRADOR: { nome: 'Administrador', perms: 'todas' },
-  OPERADOR: { nome: 'Operador', perms: ['power.read', 'person.read', 'person.manage', 'entity.create', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'document.download', 'template.read'] },
-  VALIDADOR: { nome: 'Validador', perms: ['power.read', 'person.read', 'entity.create', 'poa.read', 'poa.validate', 'poa.issue', 'poa.cancel', 'poa.archive', 'document.download', 'template.read', 'audit.read', 'export.run'] },
-  EMISSOR: { nome: 'Emissor autónomo (faz a procuração completa)', perms: ['power.read', 'person.read', 'person.manage', 'entity.create', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'poa.validate', 'poa.issue', 'poa.issue_direct', 'poa.cancel', 'poa.archive', 'document.download', 'template.read', 'export.run'] },
+  OPERADOR: { nome: 'Operador', perms: ['power.read', 'person.read', 'person.manage', 'entity.create', 'poa.custom_power', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'document.download', 'template.read'] },
+  VALIDADOR: { nome: 'Validador', perms: ['power.read', 'person.read', 'entity.create', 'poa.custom_power', 'poa.read', 'poa.validate', 'poa.issue', 'poa.cancel', 'poa.archive', 'document.download', 'template.read', 'audit.read', 'export.run'] },
+  EMISSOR: { nome: 'Emissor autónomo (faz a procuração completa)', perms: ['power.read', 'person.read', 'person.manage', 'entity.create', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'poa.validate', 'poa.issue', 'poa.issue_direct', 'poa.cancel', 'poa.archive', 'poa.custom_power', 'document.download', 'template.read', 'export.run'] },
   CONSULTA: { nome: 'Consulta', perms: ['power.read', 'person.read', 'poa.read', 'document.download'] },
 };
 

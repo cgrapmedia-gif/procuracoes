@@ -1,3 +1,5 @@
+import { textoDoBloco } from '@proc/core';
+import type { AjusteTexto } from '@proc/core';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, SQL } from 'drizzle-orm';
 import { z } from 'zod';
@@ -98,7 +100,18 @@ export class PoaService {
           if (vals.length) await tx.insert(s.poaFieldValues).values(vals.map(([k, v]) => ({ poaPowerId: pp.id, fieldKey: k.slice(0, 80), value: v as object })));
         } else await tx.insert(s.poaPowers).values({ poaId: id, position: i++, customName: x.personalizado.nome, customText: x.personalizado.texto });
       }
+      // Mudança de tipo (só em rascunho): passa a usar o modelo documental desse tipo
+      let tipoNovo: { poaTypeId: string; templateVersionId: string } | Record<string, never> = {};
+      if (d.tipoCodigo) {
+        const [t] = await tx.select().from(s.poaTypes).where(and(eq(s.poaTypes.code, d.tipoCodigo), eq(s.poaTypes.active, true)));
+        if (!t) throw new BadRequestException('Tipo de procuração inexistente');
+        if (t.id !== p.poaTypeId) {
+          const [tpl] = await tx.select().from(s.documentTemplates).where(eq(s.documentTemplates.id, t.templateId));
+          tipoNovo = { poaTypeId: t.id, templateVersionId: tpl.currentVersionId! };
+        }
+      }
       await tx.update(s.powersOfAttorney).set({
+        ...tipoNovo, ...(d.ajustesTexto !== undefined ? { textOverrides: d.ajustesTexto?.length ? d.ajustesTexto : null } : {}),
         actDate: d.dataActo, place: d.local, officerId: d.oficianteId ?? null, actingMode: d.formaActuacao, actingCustom: d.formaActuacaoPersonalizada ?? null, powersNature: d.naturezaPoderes || null,
         lockVersion: p.lockVersion + 1, updatedBy: u.id, updatedAt: new Date(),
       }).where(eq(s.powersOfAttorney.id, id));
@@ -115,7 +128,7 @@ export class PoaService {
     const pw = await tx.select({ pp: s.poaPowers, code: s.powers.code, v: s.powerVersions.versionNo }).from(s.poaPowers).leftJoin(s.powerVersions, eq(s.powerVersions.id, s.poaPowers.powerVersionId)).leftJoin(s.powers, eq(s.powers.id, s.powerVersions.powerId)).where(eq(s.poaPowers.poaId, id)).orderBy(asc(s.poaPowers.position));
     const vals = pw.length ? await tx.select().from(s.poaFieldValues).where(inArray(s.poaFieldValues.poaPowerId, pw.map((x) => x.pp.id))) : [];
     return {
-      dataActo: p.actDate, local: p.place, oficiante: p.officerId, formaActuacao: p.actingMode,
+      tipo: p.poaTypeId, dataActo: p.actDate, local: p.place, oficiante: p.officerId, formaActuacao: p.actingMode, ajustesTexto: (p.textOverrides as unknown[] | null)?.length ?? 0,
       outorgantes: partes.filter((x) => x.role === 'OUTORGANTE').map((x) => x.personId), procuradores: partes.filter((x) => x.role === 'PROCURADOR').map((x) => x.personId),
       poderes: pw.map((x) => (x.code ? `${x.code}@v${x.v}` : `PERSONALIZADO:${x.pp.customName}`)),
       valores: Object.fromEntries(pw.map((x, i) => [`${i + 1}:${x.code ?? 'P'}`, Object.fromEntries(vals.filter((v) => v.poaPowerId === x.pp.id).map((v) => [v.fieldKey, v.value]))])),
@@ -152,7 +165,7 @@ export class PoaService {
       oficiante: { nome: oficiante?.name ?? '', cargo: oficiante?.title ?? '' },
       outorgantes: partes.filter((x) => x.role === 'OUTORGANTE').map((x) => ({ pessoa: pessoas.get(x.personId)!, qualidade: (x.capacity as DadosProcuracao['outorgantes'][0]['qualidade']) ?? undefined })),
       procuradores: partes.filter((x) => x.role === 'PROCURADOR').map((x) => pessoas.get(x.personId)!),
-      formaActuacao: poa.actingMode, formaActuacaoPersonalizada: poa.actingCustom ?? undefined, naturezaPoderes: poa.powersNature ?? undefined,
+      formaActuacao: poa.actingMode, formaActuacaoPersonalizada: poa.actingCustom ?? undefined, naturezaPoderes: poa.powersNature ?? undefined, ajustesTexto: (poa.textOverrides as AjusteTexto[] | null) ?? undefined,
       poderes: soPoderes, clausulas, demo: poa.isDemo,
     };
     return { poa, dados, modelo: tv.definition as DefinicaoModelo, tiposDoc, versoesActuais: Object.fromEntries(actuais.map((a) => [a.code, a.v])) };
@@ -185,6 +198,17 @@ export class PoaService {
     return construirDocumento(c.modelo, { ...c.dados, numero: c.poa.number ?? undefined }, { preVisualizacao: !c.poa.number, tipos: c.tiposDoc });
   }
 
+  /** Blocos de texto editáveis do documento (texto gerado SEM ajustes) e os ajustes guardados. */
+  async blocosEditaveis(id: string, u: Utilizador) {
+    const c = await this.carregar(this.db, id, u);
+    if (!c.dados.outorgantes.length || !c.dados.procuradores.length) throw new BadRequestException('Identifique outorgante e procurador antes de ajustar o texto.');
+    const doc = construirDocumento(c.modelo, { ...c.dados, ajustesTexto: [], numero: c.poa.number ?? undefined }, { tipos: c.tiposDoc });
+    const ajustes = (c.poa.textOverrides as AjusteTexto[] | null) ?? [];
+    const blocos = doc.blocos.map((b, indice) => ({ indice, tipo: b.tipo, original: textoDoBloco(b) })).filter((b) => b.original !== null);
+    const validos = ajustes.filter((a) => blocos.some((b) => b.indice === a.indice && b.original === a.original));
+    return { blocos, ajustes: validos, desactualizados: ajustes.length - validos.length };
+  }
+
   async historico(tx: Tx, poaId: string, de: Estado | null, para: Estado, accao: string, u: Utilizador, motivo?: string) {
     await tx.insert(s.poaStatusHistory).values({ poaId, fromStatus: de, toStatus: para, action: accao, reason: motivo, actorId: u.id });
   }
@@ -210,7 +234,7 @@ export class PoaService {
   }
 
   /** Duplica para novo rascunho: poderes passam para a versão publicada actual; valores de campos que já não existem são descartados. */
-  async duplicar(id: string, u: Utilizador) {
+  async duplicar(id: string, u: Utilizador, rectificacao?: { motivo: string }) {
     const c = await this.carregar(this.db, id, u);
     const cat = await this.poderes.catalogoPublicado();
     const descartados: string[] = [];
@@ -219,7 +243,8 @@ export class PoaService {
       const [tpl] = await tx.select().from(s.documentTemplates).where(eq(s.documentTemplates.id, tipo.templateId));
       const [n] = await tx.insert(s.powersOfAttorney).values({
         orgId: u.orgId, poaTypeId: c.poa.poaTypeId, actDate: new Date().toISOString().slice(0, 10), place: c.poa.place, officerId: c.poa.officerId, actingMode: c.poa.actingMode, actingCustom: c.poa.actingCustom, powersNature: c.poa.powersNature,
-        templateVersionId: tpl.currentVersionId!, duplicatedFromId: id, createdBy: u.id, isDemo: c.poa.isDemo,
+        templateVersionId: rectificacao ? c.poa.templateVersionId : tpl.currentVersionId!, duplicatedFromId: id, createdBy: u.id, isDemo: c.poa.isDemo,
+        ...(rectificacao ? { rectifiesId: id, textOverrides: c.poa.textOverrides, actDate: c.poa.actDate } : {}),
       }).returning();
       const partes = await tx.select().from(s.poaParties).where(eq(s.poaParties.poaId, id));
       for (const x of partes) await tx.insert(s.poaParties).values({ poaId: n.id, personId: x.personId, role: x.role, position: x.position, capacity: x.capacity });
@@ -265,10 +290,25 @@ export class PoaService {
     return { total: rows[0]?.total ?? 0, itens: rows.map(({ total: _t, ...r }) => r) };
   }
 
+  async rectificar(id: string, motivo: string, u: Utilizador) {
+    const [p] = await this.db.select().from(s.powersOfAttorney).where(and(eq(s.powersOfAttorney.id, id), eq(s.powersOfAttorney.orgId, u.orgId)));
+    if (!p) throw new NotFoundException();
+    if (!['EMITIDA', 'ASSINADA', 'ARQUIVADA'].includes(p.status)) throw new ConflictException('Só se corrigem procurações emitidas.');
+    const [aberta] = await this.db.select({ id: s.powersOfAttorney.id }).from(s.powersOfAttorney).where(and(eq(s.powersOfAttorney.rectifiesId, id), inArray(s.powersOfAttorney.status, ['RASCUNHO', 'EM_REVISAO', 'VALIDADA'])));
+    if (aberta) return { id: aberta.id, existente: true };
+    const r = await this.duplicar(id, u, { motivo });
+    await this.db.transaction((tx) => this.audit.log(tx, u, 'POA_RECTIFICAR', 'poa', id, { numero: p.number, motivo, novo: r.id }));
+    return { id: r.id, existente: false };
+  }
+
   async detalhe(id: string, u: Utilizador) {
     const c = await this.carregar(this.db, id, u);
     const hist = await this.db.select({ h: s.poaStatusHistory, actor: s.users.name }).from(s.poaStatusHistory).innerJoin(s.users, eq(s.users.id, s.poaStatusHistory.actorId)).where(eq(s.poaStatusHistory.poaId, id)).orderBy(asc(s.poaStatusHistory.at));
-    const docs = await this.db.select({ id: s.documents.id, tipo: s.documents.kind, sha256: s.documents.sha256, tamanho: s.documents.size, criadoEm: s.documents.createdAt }).from(s.documents).where(eq(s.documents.poaId, id)).orderBy(asc(s.documents.createdAt));
+    const todosDocs = await this.db.select({ id: s.documents.id, tipo: s.documents.kind, sha256: s.documents.sha256, tamanho: s.documents.size, criadoEm: s.documents.createdAt }).from(s.documents).where(eq(s.documents.poaId, id)).orderBy(asc(s.documents.createdAt));
+    // Só a versão mais recente de cada tipo (as regeneradas substituem as que se perderam)
+    const docs = [...new Map(todosDocs.map((d) => [d.tipo, d])).values()];
+    const rect = c.poa.rectifiesId ? (await this.db.select({ numero: s.powersOfAttorney.number }).from(s.powersOfAttorney).where(eq(s.powersOfAttorney.id, c.poa.rectifiesId)))[0] : undefined;
+    const rectificadaPor = (await this.db.select({ id: s.powersOfAttorney.id, numero: s.powersOfAttorney.number, estado: s.powersOfAttorney.status }).from(s.powersOfAttorney).where(eq(s.powersOfAttorney.rectifiesId, id)))[0];
     const clausulas = c.dados.clausulas;
     const mapa = (x: PoderSeleccionado) => ({ instanciaId: x.instanciaId, versaoId: x.versao.versaoId, codigo: x.versao.codigo, nome: x.versao.nome, versao: x.versao.numeroVersao, personalizado: !!x.personalizado, textoPersonalizado: x.personalizado ? x.versao.texto.replace(/\\\{\{/g, '{{') : undefined, usarAlternativo: !!x.usarAlternativo, campos: x.versao.campos, valores: x.valores });
     return {
@@ -278,6 +318,9 @@ export class PoaService {
       procuradores: c.dados.procuradores.map((p) => ({ id: p.id, nome: p.nomeCompleto, sexo: p.sexo })),
       poderes: [...c.dados.poderes.map(mapa), ...clausulas.map((x) => ({ ...mapa(x), clausula: true }))],
       historico: hist.map((x) => ({ ...x.h, actor: x.actor })), documentos: docs,
+      ajustesTexto: (c.poa.textOverrides as AjusteTexto[] | null) ?? [],
+      rectifica: c.poa.rectifiesId ? { id: c.poa.rectifiesId, numero: rect?.numero ?? null } : null,
+      rectificadaPor: rectificadaPor ?? null,
     };
   }
 }

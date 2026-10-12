@@ -258,14 +258,24 @@ describe('Ciclo de vida completo da procuração', () => {
     expect(e.body.contentHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it('documentos emitidos: PDF + DOCX com integridade verificada no download', async () => {
+  it('documentos emitidos: PDF na emissão, DOCX na 1.ª descarga; nome do ficheiro com o outorgante; ficheiro perdido é regenerado', async () => {
+    const bin = (r: request.Test) => r.buffer(true).parse((res, cb) => { const b: Buffer[] = []; res.on('data', (x: Buffer) => b.push(x)); res.on('end', () => cb(null, Buffer.concat(b))); });
     const d = (await request(app.getHttpServer()).get(`/api/v1/poas/${poaId}`).set(auth('consulta')).expect(200)).body;
-    expect(d.documentos.map((x: { tipo: string }) => x.tipo).sort()).toEqual(['DOCX', 'PDF']);
-    for (const doc of d.documentos) {
-      const r = await request(app.getHttpServer()).get(`/api/v1/documents/${doc.id}/download`).set(auth('consulta')).buffer(true).parse((res, cb) => { const b: Buffer[] = []; res.on('data', (x: Buffer) => b.push(x)); res.on('end', () => cb(null, Buffer.concat(b))); }).expect(200);
-      expect(createHash('sha256').update(r.body as Buffer).digest('hex')).toBe(doc.sha256);
-      writeFileSync(`/tmp/emitida.${doc.tipo === 'PDF' ? 'pdf' : 'docx'}`, r.body as Buffer);
-    }
+    expect(d.documentos.map((x: { tipo: string }) => x.tipo)).toEqual(['PDF']); // só o PDF na emissão (mais rápido)
+    const pdf = await bin(request(app.getHttpServer()).get(`/api/v1/poas/${poaId}/ficheiro/pdf`).set(auth('consulta'))).expect(200);
+    expect(createHash('sha256').update(pdf.body as Buffer).digest('hex')).toBe(d.documentos[0].sha256);
+    expect(pdf.headers['content-disposition']).toMatch(/Procuracao_PROC-\d{4}-\d{6}_Am.lia_Demo_Cardoso\.pdf/);
+    writeFileSync('/tmp/emitida.pdf', pdf.body as Buffer);
+    const docx = await bin(request(app.getHttpServer()).get(`/api/v1/poas/${poaId}/ficheiro/docx`).set(auth('consulta'))).expect(200);
+    expect((docx.body as Buffer).subarray(0, 2).toString()).toBe('PK');
+    writeFileSync('/tmp/emitida.docx', docx.body as Buffer);
+    // Simula o ficheiro perdido (armazenamento temporário): a descarga regenera-o a partir do snapshot
+    const { rows } = await pool.query(`select storage_key from documents where poa_id = $1 and kind = 'PDF'`, [poaId]);
+    for (const r of rows) require('node:fs').rmSync(require('node:path').resolve(process.env.STORAGE_LOCAL_DIR ?? './.storage', r.storage_key), { force: true });
+    const outra = await bin(request(app.getHttpServer()).get(`/api/v1/documents/${d.documentos[0].id}/download`).set(auth('consulta'))).expect(200);
+    expect((outra.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
+    const { rows: g } = await pool.query(`select count(*)::int n from audit_logs where action = 'DOCUMENTO_GERAR'`);
+    expect(g[0].n).toBeGreaterThanOrEqual(2);
   });
 
   it('procuração emitida é imutável (API e base de dados)', async () => {
@@ -382,6 +392,55 @@ describe('Gestão de utilizadores', () => {
     expect(must_change_password).toBe(false);
     const me = (await request(app.getHttpServer()).get('/api/v1/auth/me').set(auth('admin'))).body;
     await request(app.getHttpServer()).put(`/api/v1/admin/users/${me.id}`).set(auth('admin')).send({ activo: false }).expect(400);
+  });
+});
+
+describe('Reparação, rectificação, tipo e ajustes de texto', () => {
+  let id = ''; let numero = '';
+  const criarRascunho = async (tipoCodigo = 'ESPECIAL') => {
+    const ofi = (await request(app.getHttpServer()).get('/api/v1/officers').set(auth('admin'))).body[0].id;
+    const out = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('admin')).send({ nomeCompleto: `Rect Outorgante ${Date.now()}`, sexo: 'F', nacionalidade: 'angolana', documento: { tipo: 'BI_AO', numero: `${Date.now()}`.slice(-9) + 'LA001', validade: '2034-01-01' } }).expect(201);
+    const pro = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('admin')).send({ nomeCompleto: `Rect Procurador ${Date.now()}`, sexo: 'M', nacionalidade: 'angolana', documento: { tipo: 'BI_AO', numero: `${Date.now() + 7}`.slice(-9) + 'LA002', validade: '2034-01-01' } }).expect(201);
+    const c = await request(app.getHttpServer()).post('/api/v1/poas').set(auth('admin')).send({ tipoCodigo, dataActo: '2026-10-02', local: 'Porto', oficianteId: ofi }).expect(201);
+    const d = (await request(app.getHttpServer()).get(`/api/v1/poas/${c.body.id}`).set(auth('admin'))).body;
+    const body = { lockVersion: d.lockVersion, dataActo: '2026-10-02', local: 'Porto', oficianteId: ofi, formaActuacao: 'ISOLADAMENTE', outorgantes: [{ pessoaId: out.body.id }], procuradores: [{ pessoaId: pro.body.id }], poderes: [{ personalizado: { nome: 'Escrito', texto: 'tratar de todos os assuntos junto da Conservatória' } }] };
+    await request(app.getHttpServer()).put(`/api/v1/poas/${c.body.id}`).set(auth('admin')).send(body).expect(200);
+    return { id: c.body.id as string, body: { ...body, lockVersion: d.lockVersion + 1 } };
+  };
+  it('o tipo pode mudar no rascunho; poderes escritos; ajustes manuais ao texto entram no documento', async () => {
+    const r = await criarRascunho('ESPECIAL');
+    id = r.id;
+    await request(app.getHttpServer()).put(`/api/v1/poas/${id}`).set(auth('admin')).send({ ...r.body, tipoCodigo: 'BANCARIA' }).expect(200);
+    let d = (await request(app.getHttpServer()).get(`/api/v1/poas/${id}`).set(auth('admin'))).body;
+    expect(d.tipo.codigo).toBe('BANCARIA');
+    const bl = (await request(app.getHttpServer()).get(`/api/v1/poas/${id}/blocos`).set(auth('admin')).expect(200)).body;
+    const fecho = bl.blocos.find((b: { original: string }) => b.original.includes('em voz alta'));
+    await request(app.getHttpServer()).put(`/api/v1/poas/${id}`).set(auth('admin')).send({ ...r.body, lockVersion: d.lockVersion, ajustesTexto: [{ indice: fecho.indice, original: fecho.original, texto: '-----TEXTO AJUSTADO À MÃO pelo operador.' }] }).expect(200);
+    const h = await request(app.getHttpServer()).get(`/api/v1/poas/${id}/preview.html`).set(auth('admin')).expect(200);
+    expect(h.text).toContain('TEXTO AJUSTADO À MÃO pelo operador.');
+    expect(h.text).toContain('tratar de todos os assuntos junto da Conservatória');
+    const e = await request(app.getHttpServer()).post(`/api/v1/poas/${id}/transitions`).set(auth('admin')).send({ accao: 'EMITIR_DIRECTO' }).expect(201);
+    numero = e.body.numero;
+    d = (await request(app.getHttpServer()).get(`/api/v1/poas/${id}`).set(auth('admin'))).body;
+    expect(d.tipo.codigo).toBe('BANCARIA');
+  });
+  it('reparar documentos regenera PDFs perdidos', async () => {
+    const { rows } = await pool.query(`select storage_key from documents where poa_id = $1`, [id]);
+    for (const r of rows) require('node:fs').rmSync(require('node:path').resolve(process.env.STORAGE_LOCAL_DIR ?? './.storage', r.storage_key), { force: true });
+    const r = await request(app.getHttpServer()).post('/api/v1/admin/repair-documents').set(auth('admin')).expect(201);
+    expect(r.body.regeneradas).toBeGreaterThanOrEqual(1);
+    expect(r.body.erros).toEqual([]);
+  });
+  it('corrigir e reemitir: mesmo número com -R1; a original fica cancelada', async () => {
+    const r = await request(app.getHttpServer()).post(`/api/v1/poas/${id}/rectificar`).set(auth('admin')).send({ motivo: 'erro no nome' }).expect(201);
+    const novo = (await request(app.getHttpServer()).get(`/api/v1/poas/${r.body.id}`).set(auth('admin'))).body;
+    expect(novo.rectifica.id).toBe(id);
+    expect(novo.ajustesTexto.length).toBe(1); // os ajustes passam para a correcção
+    const e = await request(app.getHttpServer()).post(`/api/v1/poas/${r.body.id}/transitions`).set(auth('admin')).send({ accao: 'EMITIR_DIRECTO' }).expect(201);
+    expect(e.body.numero).toBe(`${numero}-R1`);
+    const orig = (await request(app.getHttpServer()).get(`/api/v1/poas/${id}`).set(auth('admin'))).body;
+    expect(orig.estado).toBe('CANCELADA');
+    expect(orig.rectificadaPor.numero).toBe(`${numero}-R1`);
   });
 });
 

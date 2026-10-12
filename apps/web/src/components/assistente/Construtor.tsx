@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { uid } from '@/lib/formato';
 import { Categoria, ItemRascunho, PoderCatalogo } from '@/lib/tipos';
 import { Icone } from '../Icone';
-import { Campo, Modal, Vazio } from '../ui';
+import { Campo, Modal, Vazio, mensagemErro, useToast } from '../ui';
 import { Rascunho, novoItem, paraMotor } from './rascunho';
 
 /** Texto jurídico com os campos {{variavel}} destacados (nunca injecta HTML). */
@@ -52,16 +52,44 @@ function Escolhido({ item, n, problema, editavel, remover, mover, abrir, total }
   );
 }
 
+/** Categorias propostas para cada tipo de procuração (os tipos não listados mostram todas). */
+const CATEGORIAS_DO_TIPO: Record<string, string[]> = {
+  BANCARIA: ['BANCARIOS', 'SEGUROS'],
+  IMOVEL_VENDA: ['IMOBILIARIOS', 'COMPRA_VENDA', 'REGISTOS', 'FISCAIS', 'NOTARIADO', 'CONDOMINIO', 'SERVICOS'],
+  IMOVEL_COMPRA: ['IMOBILIARIOS', 'COMPRA_VENDA', 'REGISTOS', 'FISCAIS', 'NOTARIADO', 'BANCARIOS', 'SERVICOS'],
+  EMPRESARIAL: ['EMPRESARIAIS', 'SOCIETARIOS', 'COMERCIAIS', 'FISCAIS', 'LABORAIS', 'BANCARIOS', 'REGISTOS'],
+  ADMINISTRATIVA: ['ADMINISTRATIVOS', 'ENT_PUBLICAS', 'ENT_PRIVADAS', 'REGISTOS', 'NACIONALIDADE', 'FISCAIS', 'LABORAIS', 'SERVICOS', 'CORRESPONDENCIA', 'SAUDE_EDUCACAO', 'FAMILIA', 'MENORES'],
+  AUTOMOVEL: ['AUTOMOVEIS', 'SEGUROS', 'REGISTOS', 'FISCAIS', 'ADUANEIROS'],
+  JUDICIAL: ['JUDICIAIS', 'HERANCAS', 'FAMILIA'],
+};
+
 export function Construtor({ r, actualizar, catalogo, categorias, tipoCodigo, editavel, clausulas = false }: {
   r: Rascunho; actualizar: (fn: (x: Rascunho) => Rascunho) => void; catalogo: PoderCatalogo[]; categorias: Categoria[]; tipoCodigo: string; editavel: boolean; clausulas?: boolean;
 }) {
   const { pode } = useAuth(); const qc = useQueryClient();
   const doTipo = catalogo.filter((p) => (clausulas ? p.tipo === 'CLAUSULA' : p.tipo === 'PODER') && (!p.tiposPermitidos.length || p.tiposPermitidos.includes(tipoCodigo)));
-  const cats = categorias.filter((c) => doTipo.some((p) => p.categoria === c.code));
+  // O tipo de procuração define as categorias propostas (ex.: Bancária → Bancários); pode ver-se tudo com um clique
+  const doTipoCats = CATEGORIAS_DO_TIPO[tipoCodigo];
+  const [todasCats, setTodasCats] = useState(false);
+  const filtrar = !clausulas && !!doTipoCats && !todasCats;
+  const cats = categorias.filter((c) => doTipo.some((p) => p.categoria === c.code) && (!filtrar || doTipoCats!.includes(c.code)));
   const [cat, setCat] = useState<string>(cats[0]?.code ?? '');
+  useEffect(() => { if (cats.length && !cats.some((c) => c.code === cat)) setCat(cats[0].code); }, [cats, cat]);
   const [q, setQ] = useState(''); const [fav, setFav] = useState(false); const [usados, setUsados] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
-  const [pers, setPers] = useState<{ aberta: boolean; nome: string; texto: string }>({ aberta: false, nome: '', texto: '' });
+  const [pers, setPers] = useState({ aberta: false, nome: '', texto: '', catalogo: false });
+  const toast = useToast();
+  async function acrescentarEscrito() {
+    const texto = pers.texto.trim();
+    const nome = pers.nome.trim() || `${texto.split(/\s+/).slice(0, 8).join(' ')}…`;
+    actualizar((x) => ({ ...x, itens: [...x.itens, { uid: uid(), codigo: `PERS-${x.itens.length + 1}`, nome, versao: 0, clausula: false, usarAlternativo: false, campos: [], valores: {}, personalizado: { nome, texto } }] }));
+    if (pers.catalogo) {
+      // Os ajustes moldam a plataforma: o texto fica no catálogo como rascunho para ser revisto e publicado
+      try { await api('/powers', { body: { codigo: `ESC-${Date.now().toString(36).toUpperCase()}`, tipo: 'PODER', categoriaCodigo: 'OUTROS', nome: nome.slice(0, 200), descricao: 'Escrito numa procuração; rever antes de publicar.', texto: texto.replace(/\{\{|\}\}/g, ''), campos: [], regras: [], exclusivo: false, tiposPermitidos: [] } }); toast('Também guardado no Centro de Poderes (rascunho).'); }
+      catch (e) { toast(`Acrescentado à procuração, mas não ao catálogo: ${mensagemErro(e)}`, true); }
+    }
+    setPers({ aberta: false, nome: '', texto: '', catalogo: false });
+  }
   const porCodigo = useMemo(() => new Map(catalogo.map((p) => [p.codigo, p])), [catalogo]);
   const itens = r.itens.filter((i) => i.clausula === clausulas);
   const outros = r.itens.filter((i) => i.clausula !== clausulas);
@@ -102,6 +130,7 @@ export function Construtor({ r, actualizar, catalogo, categorias, tipoCodigo, ed
     <div className="construtor">
       <aside aria-label="Categorias">
         <span className="small muted" style={{ padding: '4px 12px 8px' }}>Categorias</span>
+        {!clausulas && doTipoCats && <button className="cat" aria-pressed={todasCats} onClick={() => setTodasCats(!todasCats)} style={{ fontSize: 12.5, color: 'var(--mudo)' }}>{todasCats ? '← Só categorias deste tipo' : 'Ver todas as categorias →'}</button>}
         {maisUsados.length > 0 && <button className="cat" aria-pressed={usados && !termo} onClick={() => { setUsados(true); setFav(false); setQ(''); }}><span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Icone n="historico" t={15} />Mais usados</span></button>}
         <button className="cat" aria-pressed={fav && !usados && !termo} onClick={() => { setFav(true); setUsados(false); setQ(''); }}><span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Icone n="estrela" t={15} cor="var(--ouro)" />Favoritos</span></button>
         {cats.map((c) => <button key={c.code} className="cat" aria-pressed={!fav && !usados && !termo && cat === c.code} onClick={() => { setCat(c.code); setFav(false); setUsados(false); setQ(''); setSel(null); }}><span>{c.name}</span><small>{doTipo.filter((p) => p.categoria === c.code).length}</small></button>)}
@@ -168,15 +197,16 @@ export function Construtor({ r, actualizar, catalogo, categorias, tipoCodigo, ed
               {sugestoes.map((s) => <div key={s.codigo} className="sugestao"><div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 500 }}>{s.nome}</div><div className="small muted">{s.motivo}</div></div><button className="btn icone" aria-label={`Adicionar «${s.nome}»`} onClick={() => adicionar(s.codigo)}><Icone n="mais" t={15} /></button></div>)}
             </div>
           )}
-          {editavel && !clausulas && pode('poa.custom_power') && <button className="btn fantasma pequeno" style={{ alignSelf: 'flex-start' }} onClick={() => setPers({ aberta: true, nome: '', texto: '' })}><Icone n="lapis" t={14} />Poder personalizado</button>}
+          {editavel && !clausulas && pode('poa.custom_power') && <button className="btn" style={{ alignSelf: 'stretch', justifyContent: 'center' }} onClick={() => setPers({ aberta: true, nome: '', texto: '', catalogo: false })}><Icone n="lapis" t={14} />Escrever poderes (fora do catálogo)</button>}
         </div>
       </aside>
 
-      <Modal titulo="Poder personalizado" aberta={pers.aberta} fechar={() => setPers((x) => ({ ...x, aberta: false }))}
-        rodape={<><button className="btn fantasma" onClick={() => setPers((x) => ({ ...x, aberta: false }))}>Cancelar</button><button className="btn primario" disabled={pers.nome.length < 3 || pers.texto.length < 3} onClick={() => { actualizar((x) => ({ ...x, itens: [...x.itens, { uid: uid(), codigo: `PERS-${x.itens.length + 1}`, nome: pers.nome, versao: 0, clausula: false, usarAlternativo: false, campos: [], valores: {}, personalizado: { nome: pers.nome, texto: pers.texto } }] })); setPers({ aberta: false, nome: '', texto: '' }); }}>Acrescentar</button></>}>
-        <div className="aviso atencao">Texto fora do catálogo aprovado. Fica assinalado e tem de ser validado antes da emissão.</div>
-        <Campo rotulo="Nome" obrigatorio><input className="entrada" value={pers.nome} onChange={(e) => setPers((x) => ({ ...x, nome: e.target.value }))} /></Campo>
-        <Campo rotulo="Texto" obrigatorio ajuda="Redigido como continuação de «a quem confere os poderes necessários para…»"><textarea className="entrada" value={pers.texto} onChange={(e) => setPers((x) => ({ ...x, texto: e.target.value }))} /></Campo>
+      <Modal titulo="Escrever poderes (fora do catálogo)" aberta={pers.aberta} fechar={() => setPers((x) => ({ ...x, aberta: false }))}
+        rodape={<><button className="btn fantasma" onClick={() => setPers((x) => ({ ...x, aberta: false }))}>Cancelar</button><button className="btn primario" disabled={pers.texto.trim().length < 3} onClick={acrescentarEscrito}>Acrescentar à procuração</button></>}>
+        <p className="small muted" style={{ margin: 0 }}>Escreva os poderes tal como devem aparecer no documento, a seguir a «a quem confere {r.naturezaPoderes || 'poderes necessários de representação'} para,». Também pode começar pela sua própria fórmula («confere os mais amplos poderes…»).</p>
+        <Campo rotulo="Texto dos poderes" obrigatorio><textarea className="entrada" style={{ minHeight: 180 }} value={pers.texto} onChange={(e) => setPers((x) => ({ ...x, texto: e.target.value }))} autoFocus /></Campo>
+        <Campo rotulo="Nome curto" opcional ajuda="Para o reconhecer na lista. Se ficar vazio, usam-se as primeiras palavras."><input className="entrada" value={pers.nome} onChange={(e) => setPers((x) => ({ ...x, nome: e.target.value }))} /></Campo>
+        {pode('power.manage') && <label style={{ display: 'flex', gap: 8 }}><input type="checkbox" checked={pers.catalogo} onChange={(e) => setPers((x) => ({ ...x, catalogo: e.target.checked }))} />Guardar também no Centro de Poderes (rascunho, para reutilizar depois de revisto)</label>}
       </Modal>
     </div>
   );

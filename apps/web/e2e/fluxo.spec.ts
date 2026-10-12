@@ -116,10 +116,13 @@ test.describe.serial('Ciclo completo no browser', () => {
     await expect(page.getByText(/Número PROC-\d{4}-\d{6}/)).toBeVisible({ timeout: 20_000 });
     await foto(page, '08-emitida');
     await seguinte(page, 'Arquivo');
-    await expect(page.getByText('PDF emitido')).toBeVisible();
-    await expect(page.getByText('DOCX editável')).toBeVisible();
+    await expect(page.getByText('PDF da procuração')).toBeVisible();
+    await expect(page.getByText('Word (DOCX)')).toBeVisible();
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Descarregar' }).first().click()]);
-    expect(dl.suggestedFilename()).toMatch(/^PROC-\d{4}-\d{6}\.(pdf|docx)$/);
+    expect(dl.suggestedFilename()).toMatch(/^Procuracao_PROC-\d{4}-\d{6}_Am.lia_Demo_Cardoso\.pdf$/); // nome com o outorgante
+    const [dw] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Descarregar' }).nth(1).click()]);
+    expect(dw.suggestedFilename()).toMatch(/\.docx$/); // Word gerado na 1.ª descarga
+    await expect(page.getByRole('button', { name: 'Corrigir e reemitir' })).toHaveCount(0); // o validador não cria procurações
     await foto(page, '09-arquivo');
   });
 

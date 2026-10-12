@@ -77,6 +77,8 @@ export interface DocumentoRenderizado {
   moldura?: { activa: boolean; espessura?: number };
   filetes?: FileteLivre[];
   marcaAgua?: string;
+  /** Ajustes manuais ao texto: aplicados e desactualizados (o conteúdo gerado mudou entretanto). */
+  ajustes?: { aplicados: number; desactualizados: number };
 }
 
 export interface DadosProcuracao {
@@ -92,6 +94,8 @@ export interface DadosProcuracao {
   formaActuacaoPersonalizada?: string;
   /** Natureza dos poderes conferidos (ex.: «poderes especiais»). Por omissão: «poderes necessários de representação». */
   naturezaPoderes?: string;
+  /** Ajustes manuais ao texto gerado (só se aplicam enquanto o texto original do bloco não mudar). */
+  ajustesTexto?: AjusteTexto[];
   poderes: PoderSeleccionado[];     // já pela ordem final
   clausulas: PoderSeleccionado[];   // cláusulas finais (catálogo versionado, tipo CLAUSULA), pela ordem escolhida
   demo?: boolean;
@@ -174,6 +178,29 @@ export const NATUREZAS_PODERES: [string, string, string][] = [
 /** Textos de poderes que começam pela própria fórmula de concessão (ex.: catálogo de modelos do posto). */
 export const TEM_ABERTURA = /^\s*(conferem?|concede|com\s+(os|as|o|a)\b|dando\b)/i;
 
+/** Ajuste manual a um bloco do documento: «original» é o texto gerado quando foi feito o ajuste. */
+export interface AjusteTexto { indice: number; original: string; texto: string }
+
+/** Texto editável de um bloco (negrito como **…**). */
+export function textoDoBloco(b: BlocoDoc): string | null {
+  if (b.tipo === 'titulo') return b.texto;
+  if (b.tipo === 'paragrafo' || b.tipo === 'alinea') return b.runs.map((r) => (r.negrito ? `**${r.texto}**` : r.marcador ? `⟦${r.texto}⟧` : r.texto)).join('');
+  return null;
+}
+
+/** Aplica os ajustes manuais; devolve quantos foram aplicados e quantos ficaram desactualizados. */
+export function aplicarAjustes(blocos: BlocoDoc[], ajustes: AjusteTexto[] = []): { aplicados: number; desactualizados: number } {
+  let aplicados = 0, desactualizados = 0;
+  for (const a of ajustes) {
+    const b = blocos[a.indice];
+    if (!b || textoDoBloco(b) !== a.original) { desactualizados++; continue; }
+    if (b.tipo === 'titulo') b.texto = a.texto;
+    else if (b.tipo === 'paragrafo' || b.tipo === 'alinea') b.runs = parseRuns(a.texto);
+    aplicados++;
+  }
+  return { aplicados, desactualizados };
+}
+
 export function construirDocumento(modelo: DefinicaoModelo, dados: DadosProcuracao, opts: { preVisualizacao?: boolean; tipos?: TipoDocumentoIdentificacao[] } = {}): DocumentoRenderizado {
   const { ctx, alineas } = construirContexto(dados, opts.tipos, { preVisualizacao: opts.preVisualizacao, cfgPoderes: modelo.poderes });
   const r = (t: string) => renderizar(t, ctx).replace(/[ \t]+/g, ' ').replace(/ ([,.;:])/g, '$1').trim();
@@ -192,7 +219,9 @@ export function construirDocumento(modelo: DefinicaoModelo, dados: DadosProcurac
       case 'espaco': blocos.push({ tipo: 'espaco', altura: b.altura }); break;
     }
   }
+  const ajustes = aplicarAjustes(blocos, dados.ajustesTexto);
   return {
+    ajustes,
     pagina: modelo.pagina, tipografia: modelo.tipografia, preenchimento: modelo.preenchimento,
     cabecalho: { logotipo: modelo.cabecalho.logotipo, logotipoLarguraCm: modelo.cabecalho.logotipoLarguraCm, filete: modelo.cabecalho.filete, linhas: modelo.cabecalho.linhas.map((l) => ({ ...l, texto: r(l.texto) })) },
     blocos, rodape: r(modelo.rodape.texto), paginacao: modelo.rodape.paginacao,

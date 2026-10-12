@@ -40,6 +40,9 @@ export class PoaController {
   }
 
   /** Pré-visualização HTML (no ecrã). CSP restritiva: sem scripts, sem recursos externos. */
+  @Get('poas/:id/blocos') @Requer('poa.read')
+  blocos(@Param('id', ParseUUIDPipe) id: string, @Actor() u: Utilizador) { return this.svc.blocosEditaveis(id, u); }
+
   @Get('poas/:id/preview.html') @Requer('poa.read')
   @Header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:")
   async previewHtml(@Param('id', ParseUUIDPipe) id: string, @Actor() u: Utilizador, @Res() res: Response) {
@@ -63,7 +66,30 @@ export class PoaController {
 
   @Get('documents/:id/download') @Requer('document.download')
   async download(@Param('id', ParseUUIDPipe) id: string, @Actor() u: Utilizador, @Res() res: Response) {
-    const d = await this.emissao.descarregar(id, u);
-    res.set({ 'Content-Type': d.mime, 'Content-Disposition': `attachment; filename="${d.nome}"`, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }).send(d.buf);
+    this.enviar(res, await this.emissao.descarregar(id, u));
   }
+
+  /** Ficheiro de uma procuração emitida por tipo; regenera-o do snapshot se se tiver perdido. */
+  @Get('poas/:id/ficheiro/:tipo') @Requer('document.download')
+  async ficheiro(@Param('id', ParseUUIDPipe) id: string, @Param('tipo') tipo: string, @Actor() u: Utilizador, @Res() res: Response) {
+    const kind = ({ pdf: 'PDF', docx: 'DOCX', assinada: 'DIGITALIZACAO_ASSINADA' } as const)[tipo as 'pdf'];
+    if (!kind) throw new BadRequestException('Tipo de ficheiro inválido (pdf, docx, assinada)');
+    this.enviar(res, await this.emissao.obterDocumento(id, kind, u));
+  }
+
+  /** Nome do ficheiro com o outorgante (ex.: Procuracao_PROC-2026-000012_Maria Silva.pdf), seguro para qualquer browser. */
+  private enviar(res: Response, d: { buf: Buffer; mime: string; nome: string }) {
+    const ascii = d.nome.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^A-Za-z0-9._-]+/g, '_');
+    res.set({ 'Content-Type': d.mime, 'Content-Disposition': `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(d.nome.replace(/\s+/g, '_'))}`, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Access-Control-Expose-Headers': 'Content-Disposition' }).send(d.buf);
+  }
+
+  /** Corrigir uma procuração já emitida: cria um rascunho igual; ao emitir fica «NÚMERO-R1» e a original é cancelada. */
+  @Post('poas/:id/rectificar') @Requer('poa.create')
+  rectificar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(z.object({ motivo: z.string().trim().min(5, 'Indique o motivo da correcção').max(500) }))) b: { motivo: string }, @Actor() u: Utilizador) {
+    return this.svc.rectificar(id, b.motivo, u);
+  }
+
+  /** Verifica todos os documentos emitidos e regenera os que se perderam (administradores). */
+  @Post('admin/repair-documents') @Requer('poa.purge')
+  reparar(@Actor() u: Utilizador) { return this.emissao.repararDocumentos(u); }
 }
