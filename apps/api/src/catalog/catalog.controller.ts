@@ -9,7 +9,7 @@ import { Db, InjectDb } from '../db/db.module';
 import * as s from '../db/schema';
 
 const Organizacao = z.object({ nome: z.string().trim().min(3).max(200), nomeCompleto: z.string().trim().min(3).max(300), morada: z.string().trim().min(5).max(500), cidade: z.string().trim().min(2).max(100) });
-const Oficiante = z.object({ nome: z.string().min(3).max(200), cargo: z.string().min(3).max(120), utilizadorId: z.string().uuid().optional() });
+const Oficiante = z.object({ nome: z.string().min(3).max(200), cargo: z.string().min(3).max(120), utilizadorId: z.string().uuid().optional(), rotuloAssinatura: z.string().max(120).nullish(), qualidade: z.string().max(120).nullish() });
 export const TIPOS_ENTIDADE = ['BANCO', 'CONSERVATORIA', 'TRIBUNAL', 'SEGURANCA_SOCIAL', 'ADMIN_TRIBUTARIA', 'OPERADORA', 'SEGURADORA', 'EMPRESA', 'SERVICO_PUBLICO', 'OUTRA'] as const;
 const Entidade = z.object({ tipo: z.enum(TIPOS_ENTIDADE), nome: z.string().trim().min(3, 'Indique o nome oficial completo').max(200), sigla: z.string().max(40).optional(), nif: z.string().max(20).optional() });
 const ModeloGuardado = z.object({ nome: z.string().min(3).max(120), ambito: z.enum(['PESSOAL', 'INSTITUCIONAL']), tipoCodigo: z.string().optional(), itens: z.array(z.object({ codigo: z.string(), valores: z.record(z.unknown()).optional() })).min(1).max(200) });
@@ -23,14 +23,14 @@ export class CatalogController {
 
   @Get('officers') @Requer('poa.read')
   oficiantes(@Actor() u: Utilizador, @Query('todos') todos?: string) {
-    return this.db.select({ id: s.officers.id, nome: s.officers.name, cargo: s.officers.title, activo: s.officers.active }).from(s.officers)
+    return this.db.select({ id: s.officers.id, nome: s.officers.name, cargo: s.officers.title, activo: s.officers.active, rotuloAssinatura: s.officers.signatureLabel, qualidade: s.officers.honorific }).from(s.officers)
       .where(and(eq(s.officers.orgId, u.orgId), todos === 'true' ? undefined : eq(s.officers.active, true))).orderBy(asc(s.officers.name));
   }
 
   @Put('officers/:id') @Requer('catalog.manage')
-  editarOficiante(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(Oficiante.partial().extend({ activo: z.boolean().optional() }))) b: { nome?: string; cargo?: string; activo?: boolean }, @Actor() u: Utilizador) {
+  editarOficiante(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(Oficiante.partial().extend({ activo: z.boolean().optional() }))) b: { nome?: string; cargo?: string; activo?: boolean; rotuloAssinatura?: string | null; qualidade?: string | null }, @Actor() u: Utilizador) {
     return this.db.transaction(async (tx) => {
-      const [o] = await tx.update(s.officers).set({ ...(b.nome ? { name: b.nome } : {}), ...(b.cargo ? { title: b.cargo } : {}), ...(b.activo !== undefined ? { active: b.activo } : {}) }).where(and(eq(s.officers.id, id), eq(s.officers.orgId, u.orgId))).returning();
+      const [o] = await tx.update(s.officers).set({ ...(b.nome ? { name: b.nome } : {}), ...(b.cargo ? { title: b.cargo } : {}), ...(b.activo !== undefined ? { active: b.activo } : {}), ...(b.rotuloAssinatura !== undefined ? { signatureLabel: b.rotuloAssinatura || null } : {}), ...(b.qualidade !== undefined ? { honorific: b.qualidade || null } : {}) }).where(and(eq(s.officers.id, id), eq(s.officers.orgId, u.orgId))).returning();
       if (!o) throw new NotFoundException();
       await this.audit.log(tx, u, 'OFICIANTE_EDITAR', 'officer', id, b);
       return o;
@@ -56,7 +56,7 @@ export class CatalogController {
 
   @Post('officers') @Requer('catalog.manage')
   criarOficiante(@Body(new ZodPipe(Oficiante)) b: z.infer<typeof Oficiante>, @Actor() u: Utilizador) {
-    return this.db.transaction(async (tx) => { const [o] = await tx.insert(s.officers).values({ orgId: u.orgId, name: b.nome, title: b.cargo, userId: b.utilizadorId }).returning(); await this.audit.log(tx, u, 'OFICIANTE_CRIAR', 'officer', o.id, b); return o; });
+    return this.db.transaction(async (tx) => { const [o] = await tx.insert(s.officers).values({ orgId: u.orgId, name: b.nome, title: b.cargo, userId: b.utilizadorId, signatureLabel: b.rotuloAssinatura || null, honorific: b.qualidade || null }).returning(); await this.audit.log(tx, u, 'OFICIANTE_CRIAR', 'officer', o.id, b); return o; });
   }
 
   @Get('identity-document-types') @Requer('person.read')

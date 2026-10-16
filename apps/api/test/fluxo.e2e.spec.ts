@@ -465,3 +465,42 @@ describe('Natureza dos poderes, cédula de advogado e tipo de localidade', () =>
     expect(det.naturezaPoderes).toBe('os mais amplos poderes forenses em direito permitidos');
   });
 });
+
+describe('Provas de vida', () => {
+  it('reforma: texto como no posto, numeração configurável (continua no n.º indicado), PDF com o nome do requerente', async () => {
+    const ofs = (await request(app.getHttpServer()).get('/api/v1/officers').set(auth('admin'))).body;
+    await request(app.getHttpServer()).put(`/api/v1/officers/${ofs[0].id}`).set(auth('admin')).send({ rotuloAssinatura: 'A Cônsul Geral', qualidade: 'Embaixadora' }).expect(200);
+    const p = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('admin')).send({ nomeCompleto: 'Albino Exemplo de Jesus', sexo: 'M', dataNascimento: '1950-06-01', estadoCivil: 'CASADO', nacionalidade: 'angolana', naturalidade: 'Município de Maianga, Província de Luanda', morada: { linha: 'Avenida da República, n.º 374', codigoPostal: '4430-188', concelho: 'Vila Nova de Gaia', pais: 'Portugal' } }).expect(201);
+    await request(app.getHttpServer()).put('/api/v1/declaracoes/numeracao').set(auth('admin')).send({ padrao: '{SEQ}/10.05/CGRAP/{ANO}', digitos: 3, proximo: 620 }).expect(200);
+    const c = await request(app.getHttpServer()).post('/api/v1/declaracoes').set(auth('operador')).send({ pessoaId: p.body.id, dataActo: '2026-03-04', oficianteId: ofs[0].id, modalidade: 'REFORMA', entidade: 'Instituto Nacional de Segurança Social - INSS', cartao: { tipo: 'Cartão de Beneficiário do INSS', numero: '0000031247' } }).expect(201);
+    const h = await request(app.getHttpServer()).get(`/api/v1/declaracoes/${c.body.id}/preview.html`).set(auth('operador')).expect(200);
+    const t = h.text.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ');
+    expect(t).toContain('declara, que no dia 04 de Março de 2026, junto dos serviços consulares, compareceu o Senhor ALBINO EXEMPLO DE JESUS, de 75 anos de idade, no estado civil de casado, natural do Município de Maianga, Província de Luanda, titular do Cartão de Beneficiário do INSS com o n.º 0000031247, residente habitualmente na Avenida da República, n.º 374, Código Postal 4430-188, concelho de Vila Nova de Gaia – Portugal.');
+    expect(t).toContain('destina-se a ser presente ao Instituto Nacional de Segurança Social - INSS, para efeito de manutenção do direito à pensão de reforma.');
+    expect(t).toContain('A Cônsul Geral');
+    await request(app.getHttpServer()).post(`/api/v1/declaracoes/${c.body.id}/emitir`).set(auth('operador')).expect(403); // operador prepara; emite quem tem decl.issue
+    const e = await request(app.getHttpServer()).post(`/api/v1/declaracoes/${c.body.id}/emitir`).set(auth('validador')).expect(201);
+    expect(e.body.numero).toBe('620/10.05/CGRAP/2026');
+    const f = await request(app.getHttpServer()).get(`/api/v1/declaracoes/${c.body.id}/ficheiro/pdf`).set(auth('consulta')).buffer(true).parse((res, cb) => { const b: Buffer[] = []; res.on('data', (x: Buffer) => b.push(x)); res.on('end', () => cb(null, Buffer.concat(b))); }).expect(200);
+    expect(f.headers['content-disposition']).toContain('Prova_de_Vida_620-10.05-CGRAP-2026_Albino_Exemplo_de_Jesus.pdf');
+    require('node:fs').writeFileSync('/tmp/prova-vida.pdf', f.body as Buffer);
+    await expect(pool.query(`update declarations set data = '{}' where id = $1`, [c.body.id])).rejects.toThrow(/imutável/);
+    const r = await request(app.getHttpServer()).post(`/api/v1/declaracoes/${c.body.id}/renovar`).set(auth('operador')).expect(201);
+    const det = (await request(app.getHttpServer()).get(`/api/v1/declaracoes/${r.body.id}`).set(auth('operador'))).body;
+    expect(det).toMatchObject({ estado: 'RASCUNHO', entidade: 'Instituto Nacional de Segurança Social - INSS', renovadaDe: c.body.id });
+    await request(app.getHttpServer()).delete(`/api/v1/declaracoes/${r.body.id}`).set(auth('operador')).send({ motivo: 'teste' }).expect(200);
+  });
+  it('sobrevivência com filhos menores: concordâncias e beneficiários do malogrado', async () => {
+    const mae = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('admin')).send({ nomeCompleto: 'Josefa Exemplo Neves', sexo: 'F', dataNascimento: '1980-01-10', estadoCivil: 'VIUVO', nacionalidade: 'angolana', naturalidade: 'Município do Sambizanga, Província de Luanda', morada: { linha: 'Rua de Exemplo, n.º 203', codigoPostal: '4415-083', concelho: 'Vila Nova de Gaia', pais: 'Portugal' } }).expect(201);
+    const f1 = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('admin')).send({ nomeCompleto: 'Sara Exemplo Neves', sexo: 'F', dataNascimento: '2015-02-01', nacionalidade: 'angolana', naturalidade: 'Município da Ingombota, Província de Luanda', documento: { tipo: 'BI_AO', numero: '024570563LA059', dataEmissao: '2023-01-16' } }).expect(201);
+    const f2 = await request(app.getHttpServer()).post('/api/v1/persons').set(auth('admin')).send({ nomeCompleto: 'Shaira Exemplo Neves', sexo: 'F', dataNascimento: '2018-02-01', nacionalidade: 'angolana', naturalidade: 'Município do Sambizanga, Província de Luanda' }).expect(201);
+    const ofs = (await request(app.getHttpServer()).get('/api/v1/officers').set(auth('admin'))).body;
+    const c = await request(app.getHttpServer()).post('/api/v1/declaracoes').set(auth('admin')).send({ pessoaId: mae.body.id, dataActo: '2026-09-28', oficianteId: ofs[0].id, modalidade: 'SOBREVIVENCIA', entidade: 'Instituto Nacional de Segurança Social', falecido: { nome: 'Pedro Exemplo Neves', sexo: 'M', numero: '000781900' }, dependentes: [{ pessoaId: f1.body.id, relacao: 'FILHO' }, { pessoaId: f2.body.id, relacao: 'FILHO' }] }).expect(201);
+    const t = (await request(app.getHttpServer()).get(`/api/v1/declaracoes/${c.body.id}/preview.html`).set(auth('admin'))).text.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ');
+    expect(t).toContain('compareceu a Senhora JOSEFA EXEMPLO NEVES, de 46 anos de idade, no estado civil de viúva');
+    expect(t).toContain('com as suas filhas menores, SARA EXEMPLO NEVES, de 11 anos de idade, natural do Município da Ingombota, Província de Luanda, titular do bilhete de identidade n.º 024570563LA059, emitido aos 16/01/2023 e SHAIRA EXEMPLO NEVES, de 8 anos de idade');
+    expect(t).toContain('residentes habitualmente na Rua de Exemplo, n.º 203');
+    expect(t).toContain('beneficiárias do malogrado PEDRO EXEMPLO NEVES, com o número de segurado 000781900');
+    expect(t).toContain('direito à pensão de sobrevivência');
+  });
+});

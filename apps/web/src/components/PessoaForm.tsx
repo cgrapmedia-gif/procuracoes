@@ -83,6 +83,7 @@ export function PessoaGaveta({ aberta, fechar, pessoaId, aoGuardar, nomeInicial 
           <Campo rotulo="Cônjuge" opcional><input className="entrada" value={p.conjuge ?? ''} onChange={(e) => set({ conjuge: e.target.value })} /></Campo>
           <Campo rotulo="Regime de bens" opcional><input className="entrada" placeholder="comunhão de adquiridos" value={p.regimeBens ?? ''} onChange={(e) => set({ regimeBens: e.target.value })} /></Campo>
         </div>}
+        <Campo rotulo="Data de nascimento" opcional ajuda="Usada para a idade nas provas de vida e para identificar menores."><input className="entrada" type="date" value={p.dataNascimento ?? ''} onChange={(e) => set({ dataNascimento: e.target.value || null })} /></Campo>
         <Campo rotulo="Naturalidade" opcional><input className="entrada" placeholder="Município de …, Província de …" value={p.naturalidade ?? ''} onChange={(e) => set({ naturalidade: e.target.value })} /></Campo>
         <h3>Documento de identificação</h3>
         <div className="linha-form">

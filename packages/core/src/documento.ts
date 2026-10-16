@@ -12,13 +12,13 @@ export interface Run { texto: string; negrito?: boolean; marcador?: boolean }
 export type Alinhamento = 'ESQUERDA' | 'CENTRO' | 'DIREITA' | 'JUSTIFICADO';
 
 export type BlocoModelo =
-  | { tipo: 'titulo'; texto: string; preencher?: boolean }
+  | { tipo: 'titulo'; texto: string; preencher?: boolean; sublinhado?: boolean }
   | { tipo: 'paragrafo'; texto: string; alinhamento?: Alinhamento; preencher?: boolean; seExiste?: string; espacoAntes?: number }
   | { tipo: 'poderes' }                              // só usado em modo LISTA
   | { tipo: 'assinaturas'; itens: ItemAssinatura[] }
   | { tipo: 'espaco'; altura: number };
 
-export interface ItemAssinatura { rotulo: string; nome?: string; alinhamento?: 'ESQUERDA' | 'CENTRO' }
+export interface ItemAssinatura { rotulo: string; nome?: string; alinhamento?: 'ESQUERDA' | 'CENTRO'; /** Linha abaixo do nome (ex.: «Embaixadora»). */ qualidade?: string; /** Sem traço de assinatura (espaço em branco). */ semLinha?: boolean }
 export interface LinhaCabecalho { texto: string; negrito?: boolean; tamanho?: number; fonte?: string }
 /**
  * Filete livre: linha horizontal ou vertical posicionada no cabeçalho ou no rodapé.
@@ -59,7 +59,7 @@ export interface DefinicaoModelo {
 }
 
 export type BlocoDoc =
-  | { tipo: 'titulo'; texto: string; preencher: boolean }
+  | { tipo: 'titulo'; texto: string; preencher: boolean; sublinhado?: boolean }
   | { tipo: 'paragrafo'; runs: Run[]; alinhamento: Alinhamento; preencher: boolean; espacoAntes?: number }
   | { tipo: 'alinea'; marcador: string; runs: Run[]; preencher: boolean }
   | { tipo: 'assinaturas'; itens: ItemAssinatura[] }
@@ -207,7 +207,7 @@ export function construirDocumento(modelo: DefinicaoModelo, dados: DadosProcurac
   const blocos: BlocoDoc[] = [];
   for (const b of modelo.blocos) {
     switch (b.tipo) {
-      case 'titulo': blocos.push({ tipo: 'titulo', texto: r(b.texto), preencher: !!b.preencher }); break;
+      case 'titulo': blocos.push({ tipo: 'titulo', texto: r(b.texto), preencher: !!b.preencher, sublinhado: b.sublinhado }); break;
       case 'paragrafo': {
         if (b.seExiste) { const v = obterCaminho(ctx, b.seExiste); if (!v || (Array.isArray(v) && !v.length)) break; }
         const texto = r(b.texto);

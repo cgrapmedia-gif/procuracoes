@@ -1,7 +1,7 @@
 'use client';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BlocoModelo, DadosProcuracao, DefinicaoModelo, Filete, FileteLivre, construirDocumento, renderizarHtml } from '@proc/core/browser';
+import { BlocoModelo, DadosProcuracao, DadosProvaVida, DefinicaoModelo, Filete, FileteLivre, construirDocumento, construirProvaVida, renderizarHtml } from '@proc/core/browser';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { dataHoraPT } from '@/lib/formato';
@@ -12,7 +12,7 @@ import { Campo, Giro, Modal, mensagemErro, useToast } from '@/components/ui';
 interface Modelo { id: string; code: string; name: string; currentVersionId: string | null }
 interface Versao { id: string; versionNo: number; status: string; definition: DefinicaoModelo; changeNote: string | null; publishedAt: string | null; createdAt: string }
 interface Posto { nome: string; nomeCompleto: string; morada: string; cidade: string }
-interface Oficiante { id: string; nome: string; cargo: string; activo: boolean }
+interface Oficiante { id: string; nome: string; cargo: string; activo: boolean; rotuloAssinatura?: string | null; qualidade?: string | null }
 
 const FONTES = [['Merriweather', 'Merriweather (modelo do posto)'], ['Times New Roman', 'Times New Roman'], ['Arial', 'Arial'], ['DejaVu Serif', 'DejaVu Serif']];
 const VARIAVEIS = ['{{documento.dataExtenso}}', '{{documento.local}}', '{{posto.nome}}', '{{posto.nomeCompleto}}', '{{posto.morada}}', '{{oficiante.nome}}', '{{oficiante.cargo}}', '{{outorgantesIdentificacao}}', '{{procuradoresIdentificacao}}', '{{formaActuacao}}', '{{poderes}}', '{{clausulas}}', '{{upper …}}', '{{flex outorgantes "o" "a" "os" "as"}}', '**negrito**'];
@@ -28,6 +28,17 @@ function amostra(posto?: Posto, ofi?: Oficiante): DadosProcuracao {
     outorgantes: [{ pessoa: pessoa('a', 'Maria Exemplo da Silva', 'F') }], procuradores: [pessoa('b', 'João Exemplo Santos', 'M')], formaActuacao: 'ISOLADAMENTE',
     poderes: [{ instanciaId: '1', valores: { banco: { id: 'x', nome: 'Banco de Exemplo, S.A.', sigla: 'BEX' } }, versao: { poderId: 'x', versaoId: 'x', numeroVersao: 1, codigo: 'EX', nome: 'Exemplo', categoria: '', texto: 'junto da instituição bancária {{banco}}, qualquer das suas dependências, podendo praticar todos os actos necessários e convenientes relativamente à sua conta bancária', campos: [{ chave: 'banco', rotulo: 'Banco', tipo: 'ENTIDADE', obrigatorio: true }], regras: [] } }],
     clausulas: [], demo: false,
+  };
+}
+
+/** Dados fictícios para pré-visualizar o modelo da prova de vida. */
+function amostraPV(posto?: Posto, ofi?: Oficiante): DadosProvaVida {
+  return {
+    numero: '620/10.05/CGRAP/2026', dataActo: new Date().toISOString().slice(0, 10), local: posto?.cidade ?? 'Porto',
+    posto: { nome: posto?.nome ?? 'Consulado Geral no Porto', nomeCompleto: posto?.nomeCompleto ?? 'Consulado Geral da República de Angola', morada: posto?.morada ?? '' },
+    signatario: { nome: ofi?.nome ?? 'Nome de quem assina', cargo: ofi?.cargo ?? 'Cônsul Geral', rotulo: ofi?.rotuloAssinatura ?? undefined, qualidade: ofi?.qualidade ?? undefined },
+    requerente: { id: 'a', nomeCompleto: 'Albino Exemplo de Jesus', sexo: 'M', dataNascimento: '1950-06-01', estadoCivil: 'CASADO', nacionalidade: 'angolana', naturalidade: 'Município de Maianga, Província de Luanda', documento: { tipo: 'BI_AO', numero: '' }, morada: { linha: 'Avenida da República, n.º 374', codigoPostal: '4430-188', concelho: 'Vila Nova de Gaia', pais: 'Portugal' } },
+    modalidade: 'REFORMA', entidade: 'Instituto Nacional de Segurança Social - INSS', cartao: { tipo: 'Cartão de Beneficiário do INSS', numero: '0000031247' },
   };
 }
 
@@ -90,7 +101,8 @@ const lerPng = (f: File) => new Promise<string>((res, rej) => { if (f.type !== '
 
 export default function Modelos() {
   const { pode } = useAuth(); const qc = useQueryClient(); const toast = useToast();
-  const lista = useQuery({ queryKey: ['templates'], queryFn: () => api<Modelo[]>('/templates') });
+  // Modelos das procurações primeiro; depois as declarações (prova de vida)
+  const lista = useQuery({ queryKey: ['templates'], queryFn: () => api<Modelo[]>('/templates').then((l) => [...l].sort((x, y) => Number(x.code === 'PROVA_VIDA') - Number(y.code === 'PROVA_VIDA') || x.code.localeCompare(y.code))) });
   const [sel, setSel] = useState<string | null>(null);
   const tpl = lista.data?.find((m) => m.id === (sel ?? lista.data?.[0]?.id));
   const versoes = useQuery({ queryKey: ['template-versions', tpl?.id], queryFn: () => api<Versao[]>(`/templates/${tpl!.id}/versions`), enabled: !!tpl });
@@ -106,10 +118,11 @@ export default function Modelos() {
   const previa = useMemo(() => {
     if (!def) return '';
     try {
-      const html = renderizarHtml(construirDocumento(def, amostra(posto.data, oficiantes.data?.find((o) => o.activo)), { preVisualizacao: false }));
+      const of = oficiantes.data?.find((o) => o.activo);
+      const html = renderizarHtml(tpl?.code === 'PROVA_VIDA' ? construirProvaVida(def, amostraPV(posto.data, of)) : construirDocumento(def, amostra(posto.data, of), { preVisualizacao: false }));
       return html.replace('<head>', '<head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Pragati+Narrow:wght@400;700&display=swap"><style>body{background:#E6E1D7}.folha{zoom:0.72;margin:16px auto !important}</style>');
     } catch (e) { return `<p style="font-family:sans-serif;color:#8C1D18;padding:16px">Erro no modelo: ${(e as Error).message.replace(/</g, '&lt;')}</p>`; }
-  }, [def, posto.data, oficiantes.data]);
+  }, [def, posto.data, oficiantes.data, tpl?.code]);
 
   const up = (fn: (d: DefinicaoModelo) => void) => setDef((d) => { if (!d) return d; const n = structuredClone(d); fn(n); return n; });
   const bloco = (i: number, patch: Partial<BlocoModelo>) => up((d) => { d.blocos[i] = { ...d.blocos[i], ...patch } as BlocoModelo; });
@@ -234,6 +247,7 @@ export default function Modelos() {
                 <DadosPosto />
                 <TiposDocumento />
                 <Numeracao />
+                <NumeracaoProvas />
               </fieldset>
               {editavel && (
                 <div className="cartao"><div className="corpo">
@@ -264,12 +278,12 @@ function DadosPosto() {
   const posto = useQuery({ queryKey: ['organization'], queryFn: () => api<Posto>('/organization') });
   const ofs = useQuery({ queryKey: ['officers', 'todos'], queryFn: () => api<Oficiante[]>('/officers?todos=true') });
   const [p, setP] = useState<Posto | null>(null);
-  const [novo, setNovo] = useState<{ aberta: boolean; nome: string; cargo: string; id?: string }>({ aberta: false, nome: '', cargo: 'Vice-cônsul' });
+  const [novo, setNovo] = useState<{ aberta: boolean; nome: string; cargo: string; id?: string; rotuloAssinatura?: string; qualidade?: string }>({ aberta: false, nome: '', cargo: 'Vice-cônsul' });
   useEffect(() => { if (posto.data) setP(posto.data); }, [posto.data]);
   const gerir = pode('catalog.manage');
   async function gravar() { try { await api('/organization', { method: 'PUT', body: p }); toast('Dados do posto actualizados.'); qc.invalidateQueries({ queryKey: ['organization'] }); } catch (e) { toast(mensagemErro(e), true); } }
   async function oficiante(o: Oficiante, patch: Partial<Oficiante>) { try { await api(`/officers/${o.id}`, { method: 'PUT', body: patch }); qc.invalidateQueries({ queryKey: ['officers'] }); } catch (e) { toast(mensagemErro(e), true); } }
-  async function criarOficiante() { try { if (novo.id) await api(`/officers/${novo.id}`, { method: 'PUT', body: { nome: novo.nome, cargo: novo.cargo } }); else await api('/officers', { body: { nome: novo.nome, cargo: novo.cargo } }); setNovo({ aberta: false, nome: '', cargo: 'Vice-cônsul' }); qc.invalidateQueries({ queryKey: ['officers'] }); toast('Oficiante guardado.'); } catch (e) { toast(mensagemErro(e), true); } }
+  async function criarOficiante() { try { const corpo = { nome: novo.nome, cargo: novo.cargo, rotuloAssinatura: novo.rotuloAssinatura || null, qualidade: novo.qualidade || null }; if (novo.id) await api(`/officers/${novo.id}`, { method: 'PUT', body: corpo }); else await api('/officers', { body: corpo }); setNovo({ aberta: false, nome: '', cargo: 'Vice-cônsul' }); qc.invalidateQueries({ queryKey: ['officers'] }); toast('Oficiante guardado.'); } catch (e) { toast(mensagemErro(e), true); } }
   if (!p) return null;
   return (
     <Seccao titulo="Dados do posto e oficiantes">
@@ -283,7 +297,7 @@ function DadosPosto() {
         {ofs.data?.map((o) => (
           <div key={o.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, opacity: o.activo ? 1 : 0.55 }}>
             <span style={{ flex: 1 }}><b style={{ fontWeight: 600 }}>{o.nome}</b>, {o.cargo}</span>
-            {gerir && <button className="btn pequeno fantasma" onClick={() => setNovo({ aberta: true, id: o.id, nome: o.nome, cargo: o.cargo })}>Editar</button>}
+            {gerir && <button className="btn pequeno fantasma" onClick={() => setNovo({ aberta: true, id: o.id, nome: o.nome, cargo: o.cargo, rotuloAssinatura: o.rotuloAssinatura ?? '', qualidade: o.qualidade ?? '' })}>Editar</button>}
             {gerir && <button className="btn pequeno" onClick={() => oficiante(o, { activo: !o.activo })}>{o.activo ? 'Desactivar' : 'Activar'}</button>}
           </div>
         ))}
@@ -291,6 +305,8 @@ function DadosPosto() {
       </fieldset>
       <Modal titulo={novo.id ? 'Editar oficiante' : 'Novo oficiante'} aberta={novo.aberta} fechar={() => setNovo({ ...novo, aberta: false })} rodape={<><button className="btn fantasma" onClick={() => setNovo({ ...novo, aberta: false })}>Cancelar</button><button className="btn primario" disabled={novo.nome.length < 3} onClick={criarOficiante}>{novo.id ? 'Guardar' : 'Acrescentar'}</button></>}>
         <Campo rotulo="Nome completo (como aparece no texto e na assinatura)" obrigatorio><input className="entrada" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} /></Campo>
+        <Campo rotulo="Rótulo na assinatura das declarações" opcional ajuda="Ex.: «A Cônsul Geral». Se ficar vazio: «O » + cargo."><input className="entrada" value={novo.rotuloAssinatura ?? ''} onChange={(e) => setNovo({ ...novo, rotuloAssinatura: e.target.value })} /></Campo>
+        <Campo rotulo="Linha por baixo do nome" opcional ajuda="Ex.: «Embaixadora»."><input className="entrada" value={novo.qualidade ?? ''} onChange={(e) => setNovo({ ...novo, qualidade: e.target.value })} /></Campo>
         <Campo rotulo="Cargo (como aparece no texto)" obrigatorio ajuda="Ex.: Vice-cônsul, Cônsul-Geral. Na assinatura aparece em maiúsculas: «O VICE-CÔNSUL»."><input className="entrada" value={novo.cargo} onChange={(e) => setNovo({ ...novo, cargo: e.target.value })} /></Campo>
       </Modal>
     </Seccao>
@@ -339,6 +355,29 @@ function Numeracao() {
         </div>
         <span className="small">Exemplo: <b className="mono">{exemplo}</b>. A contagem recomeça em cada ano e nunca repete números.</span>
         {pode('catalog.manage') && <button className="btn pequeno" style={{ alignSelf: 'flex-start' }} onClick={gravar}>Guardar numeração</button>}
+      </fieldset>
+    </Seccao>
+  );
+}
+
+/** Numeração das provas de vida (ex.: 620/10.05/CGRAP/2026), com o próximo número para continuar a série em uso. */
+function NumeracaoProvas() {
+  const { pode } = useAuth(); const toast = useToast(); const qc = useQueryClient();
+  const n = useQuery({ queryKey: ['num-provas'], queryFn: () => api<{ padrao: string; digitos: number; proximo: number; exemplo: string }>('/declaracoes/numeracao') });
+  const [v, setV] = useState<{ padrao: string; digitos: number; proximo: number } | null>(null);
+  useEffect(() => { if (n.data) setV({ padrao: n.data.padrao, digitos: n.data.digitos, proximo: n.data.proximo }); }, [n.data]);
+  if (!v) return null;
+  async function gravar() { try { await api('/declaracoes/numeracao', { method: 'PUT', body: v }); qc.invalidateQueries({ queryKey: ['num-provas'] }); toast('Numeração das provas de vida guardada.'); } catch (e) { toast(mensagemErro(e), true); } }
+  return (
+    <Seccao titulo="Numeração das provas de vida">
+      <fieldset disabled={!pode('catalog.manage')} style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="linha-form">
+          <Campo rotulo="Formato" ajuda="{SEQ} = número, {ANO} = ano"><input className="entrada mono" value={v.padrao} onChange={(e) => setV({ ...v, padrao: e.target.value })} /></Campo>
+          <Campo rotulo="Dígitos"><input className="entrada" type="number" min={1} max={8} value={v.digitos} onChange={(e) => setV({ ...v, digitos: Number(e.target.value) })} /></Campo>
+          <Campo rotulo="Próximo número" ajuda="Para continuar a numeração já usada este ano."><input className="entrada" type="number" min={1} value={v.proximo} onChange={(e) => setV({ ...v, proximo: Number(e.target.value) })} /></Campo>
+        </div>
+        <span className="small">Próxima declaração: <b className="mono">{v.padrao.replace('{SEQ}', String(v.proximo).padStart(v.digitos, '0')).replace('{ANO}', String(new Date().getFullYear()))}</b></span>
+        {pode('catalog.manage') && <button className="btn pequeno" style={{ alignSelf: 'flex-start' }} onClick={gravar}>Guardar</button>}
       </fieldset>
     </Seccao>
   );

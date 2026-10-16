@@ -27,14 +27,15 @@ export const PERMISSOES: [string, string][] = [
   ['poa.issue', 'Emitir e registar assinatura'], ['poa.issue_direct', 'Emitir directamente, sem revisão por terceiros'], ['poa.cancel', 'Cancelar'], ['poa.purge', 'Apagar procurações e os respectivos documentos (irreversível)'], ['poa.archive', 'Arquivar'], ['poa.custom_power', 'Usar poderes personalizados'],
   ['document.download', 'Descarregar documentos'], ['template.read', 'Consultar modelos'], ['template.manage', 'Editar modelos'], ['template.publish', 'Publicar modelos'],
   ['entity.create', 'Acrescentar entidades (bancos, conservatórias…) durante a redacção'],
+  ['decl.read', 'Consultar declarações (provas de vida)'], ['decl.create', 'Preparar declarações'], ['decl.issue', 'Emitir e cancelar declarações'],
   ['catalog.manage', 'Gerir entidades, tipos e modelos institucionais'], ['user.manage', 'Gerir utilizadores e perfis'], ['audit.read', 'Consultar auditoria'], ['export.run', 'Exportar dados'],
 ];
 export const PERFIS: Record<string, { nome: string; perms: string[] | 'todas' }> = {
   ADMINISTRADOR: { nome: 'Administrador', perms: 'todas' },
-  OPERADOR: { nome: 'Operador', perms: ['power.read', 'person.read', 'person.manage', 'entity.create', 'poa.custom_power', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'document.download', 'template.read'] },
-  VALIDADOR: { nome: 'Validador', perms: ['power.read', 'person.read', 'entity.create', 'poa.custom_power', 'poa.read', 'poa.validate', 'poa.issue', 'poa.cancel', 'poa.archive', 'document.download', 'template.read', 'audit.read', 'export.run'] },
-  EMISSOR: { nome: 'Emissor autónomo (faz a procuração completa)', perms: ['power.read', 'person.read', 'person.manage', 'entity.create', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'poa.validate', 'poa.issue', 'poa.issue_direct', 'poa.cancel', 'poa.archive', 'poa.custom_power', 'document.download', 'template.read', 'export.run'] },
-  CONSULTA: { nome: 'Consulta', perms: ['power.read', 'person.read', 'poa.read', 'document.download'] },
+  OPERADOR: { nome: 'Operador', perms: ['decl.read', 'decl.create', 'power.read', 'person.read', 'person.manage', 'entity.create', 'poa.custom_power', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'document.download', 'template.read'] },
+  VALIDADOR: { nome: 'Validador', perms: ['decl.read', 'decl.issue', 'power.read', 'person.read', 'entity.create', 'poa.custom_power', 'poa.read', 'poa.validate', 'poa.issue', 'poa.cancel', 'poa.archive', 'document.download', 'template.read', 'audit.read', 'export.run'] },
+  EMISSOR: { nome: 'Emissor autónomo (faz a procuração completa)', perms: ['decl.read', 'decl.create', 'decl.issue', 'power.read', 'person.read', 'person.manage', 'entity.create', 'poa.read', 'poa.create', 'poa.edit', 'poa.submit', 'poa.validate', 'poa.issue', 'poa.issue_direct', 'poa.cancel', 'poa.archive', 'poa.custom_power', 'document.download', 'template.read', 'export.run'] },
+  CONSULTA: { nome: 'Consulta', perms: ['decl.read', 'power.read', 'person.read', 'poa.read', 'document.download'] },
 };
 
 export const TIPOS_POA: [string, string, 'PROSA' | 'LISTA', string[]][] = [

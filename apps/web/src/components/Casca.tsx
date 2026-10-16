@@ -11,6 +11,7 @@ const NAV: { rotulo: string; href: string; icone: string; perm?: string; grupo?:
   { rotulo: 'Procurações', href: '/procuracoes', icone: 'doc', perm: 'poa.read' },
   { rotulo: 'Nova procuração', href: '/procuracoes/nova', icone: 'mais', perm: 'poa.create' },
   { rotulo: 'Pessoas', href: '/pessoas', icone: 'pessoas', perm: 'person.read' },
+  { rotulo: 'Provas de vida', href: '/provas-de-vida', icone: 'doc', perm: 'decl.read' },
   { rotulo: 'Centro de Poderes', href: '/admin/poderes', icone: 'camadas', perm: 'power.manage', grupo: 'Administração' },
   { rotulo: 'Modelos documentais', href: '/admin/modelos', icone: 'modelo', perm: 'template.read' },
   { rotulo: 'Auditoria', href: '/admin/auditoria', icone: 'escudo', perm: 'audit.read' },

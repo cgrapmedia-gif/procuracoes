@@ -11,3 +11,5 @@ export * from './workflow';
 export * from './numeracao';
 export * from './documento';
 export * from './render-html';
+
+export * from './declaracao';

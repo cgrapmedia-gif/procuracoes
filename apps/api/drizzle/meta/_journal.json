@@ -85,6 +85,13 @@
       "when": 1791746188988,
       "tag": "0011_rectificacao_texto",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792084384813,
+      "tag": "0012_declaracoes_prova_vida",
+      "breakpoints": true
     }
   ]
 }

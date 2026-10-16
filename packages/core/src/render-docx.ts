@@ -57,7 +57,7 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
   const bloco = (b: BlocoDoc): Paragraph[] => {
     switch (b.tipo) {
       case 'titulo':
-        if (!b.preencher) return [new Paragraph({ border, alignment: AlignmentType.CENTER, spacing, children: [new TextRun({ text: b.texto, bold: true, font: t.fonte, size: (t.tamanhoTitulo ?? t.tamanho) * 2 })] })];
+        if (!b.preencher) return [new Paragraph({ border, alignment: AlignmentType.CENTER, spacing, children: [new TextRun({ text: b.texto, bold: true, underline: b.sublinhado ? {} : undefined, font: t.fonte, size: (t.tamanhoTitulo ?? t.tamanho) * 2 })] })];
         return [new Paragraph({
           border, spacing,
           tabStops: [{ type: TabStopType.CENTER, position: Math.round(larguraUtil / 2), leader: 'hyphen' }, { type: TabStopType.RIGHT, position: larguraUtil, leader: 'hyphen' }],
@@ -74,8 +74,9 @@ export async function renderizarDocx(doc: DocumentoRenderizado): Promise<Buffer>
           const al = i.alinhamento === 'ESQUERDA' ? AlignmentType.LEFT : AlignmentType.CENTER;
           return [
             new Paragraph({ border, alignment: al, keepNext: true, keepLines: true, spacing: { before: idx === 0 ? 480 : Math.round((t.espacoAssinaturas ?? 18) * 20) }, children: [new TextRun({ text: i.rotulo, bold: true, font: t.fonte, size: sa })] }),
-            new Paragraph({ border, alignment: al, keepNext: !!i.nome || idx < b.itens.length - 1, spacing: { before: 480 }, children: [new TextRun({ text: '_'.repeat(i.alinhamento === 'ESQUERDA' ? 26 : 38), font: t.fonte, size })] }),
+            new Paragraph({ border, alignment: al, keepNext: !!i.nome || idx < b.itens.length - 1, spacing: { before: 480 }, children: [new TextRun({ text: i.semLinha ? ' ' : '_'.repeat(i.alinhamento === 'ESQUERDA' ? 26 : 38), font: t.fonte, size })] }),
             ...(i.nome ? [new Paragraph({ border, alignment: al, keepNext: idx < b.itens.length - 1, children: [new TextRun({ text: i.nome, bold: true, font: t.fonte, size: sa })] })] : []),
+            ...(i.qualidade ? [new Paragraph({ border, alignment: al, children: [new TextRun({ text: i.qualidade, bold: true, italics: true, font: t.fonte, size: Math.round(sa * 0.85) })] })] : []),
           ];
         });
     }

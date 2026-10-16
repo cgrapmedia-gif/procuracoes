@@ -11,3 +11,5 @@ export * from './numeracao';
 export * from './documento';
 export * from './render-html';
 export * from './render-docx';
+
+export * from './declaracao';

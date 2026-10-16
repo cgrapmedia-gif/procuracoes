@@ -15,11 +15,11 @@ function runs(rs: Run[]): string {
 
 function bloco(b: BlocoDoc): string {
   switch (b.tipo) {
-    case 'titulo': return `<h1 class="titulo${b.preencher ? ' fill-2' : ''}"><span>${escapeHtml(b.texto)}</span></h1>`;
+    case 'titulo': return `<h1 class="titulo${b.preencher ? ' fill-2' : ''}"${b.sublinhado ? ' style="text-decoration:underline"' : ''}><span>${escapeHtml(b.texto)}</span></h1>`;
     case 'paragrafo': return `<p class="${b.preencher ? 'fill' : ''}" style="text-align:${ALIGN[b.alinhamento]};${b.espacoAntes ? `margin-top:${b.espacoAntes}pt` : ''}">${runs(b.runs)}</p>`;
     case 'alinea': return `<p class="alinea${b.preencher ? ' fill' : ''}"><span class="mk">${escapeHtml(b.marcador)}</span>${runs(b.runs)}</p>`;
     case 'espaco': return `<div style="height:${b.altura}pt"></div>`;
-    case 'assinaturas': return `<section class="assinaturas">${b.itens.map((i) => `<div class="ass${i.alinhamento === 'ESQUERDA' ? ' esq' : ''}"><div class="rot">${escapeHtml(i.rotulo)}</div><div class="linha"></div>${i.nome ? `<div class="nome">${escapeHtml(i.nome)}</div>` : ''}</div>`).join('')}</section>`;
+    case 'assinaturas': return `<section class="assinaturas">${b.itens.map((i) => `<div class="ass${i.alinhamento === 'ESQUERDA' ? ' esq' : ''}"><div class="rot">${escapeHtml(i.rotulo)}</div><div class="linha"${i.semLinha ? ' style="border:0"' : ''}></div>${i.nome ? `<div class="nome">${escapeHtml(i.nome)}</div>` : ''}${i.qualidade ? `<div class="qual" style="font-style:italic;font-size:0.85em">${escapeHtml(i.qualidade)}</div>` : ''}</div>`).join('')}</section>`;
   }
 }
 

@@ -59,6 +59,8 @@ export const refreshTokens = pgTable('refresh_tokens', {
 export const officers = pgTable('officers', {
   id: id(), orgId: uuid('org_id').notNull().references(() => organizations.id), name: text('name').notNull(), title: text('title').notNull(),
   userId: uuid('user_id').references(() => users.id), active: boolean('active').notNull().default(true), createdAt: criado(),
+  /** Rótulo na assinatura das declarações (ex.: «A Cônsul Geral») e linha seguinte ao nome (ex.: «Embaixadora»). */
+  signatureLabel: text('signature_label'), honorific: text('honorific'),
 });
 
 // ─── Pessoas e entidades ─────────────────────────────────────────────────────
@@ -192,8 +194,30 @@ export const poaStatusHistory = pgTable('poa_status_history', {
 });
 
 /** Ficheiros gerados/carregados. Chaves de armazenamento aleatórias; download só via API autenticada. */
+/** Declarações consulares (começa pela prova de vida). */
+export const declarations = pgTable('declarations', {
+  id: id(), orgId: uuid('org_id').notNull().references(() => organizations.id),
+  kind: varchar('kind', { length: 30 }).notNull().default('PROVA_VIDA'),
+  status: varchar('status', { length: 20 }).notNull().default('RASCUNHO'),
+  number: text('number').unique(),
+  actDate: date('act_date').notNull(),
+  officerId: uuid('officer_id').references(() => officers.id),
+  personId: uuid('person_id').notNull().references(() => persons.id),
+  /** Modalidade, entidade, cartão, falecido e dependentes (ids das pessoas). */
+  data: jsonb('data').notNull(),
+  templateVersionId: uuid('template_version_id').references(() => templateVersions.id),
+  textOverrides: jsonb('text_overrides'),
+  snapshot: jsonb('snapshot'), contentHash: varchar('content_hash', { length: 64 }), verificationCode: varchar('verification_code', { length: 16 }),
+  renewedFromId: uuid('renewed_from_id'),
+  lockVersion: integer('lock_version').notNull().default(0),
+  createdBy: uuid('created_by').notNull().references(() => users.id), createdAt: criado(),
+  updatedBy: uuid('updated_by').references(() => users.id), updatedAt: actualizado(),
+  issuedBy: uuid('issued_by').references(() => users.id), issuedAt: timestamp('issued_at', { withTimezone: true }),
+  cancelReason: text('cancel_reason'),
+}, (t) => ({ orgIdx: index('declarations_org_idx').on(t.orgId, t.actDate), personIdx: index('declarations_person_idx').on(t.personId) }));
+
 export const documents = pgTable('documents', {
-  id: id(), poaId: uuid('poa_id').notNull().references(() => powersOfAttorney.id), kind: tipoFicheiroEnum('kind').notNull(),
+  id: id(), poaId: uuid('poa_id').references(() => powersOfAttorney.id), declarationId: uuid('declaration_id').references(() => declarations.id), kind: tipoFicheiroEnum('kind').notNull(),
   storageKey: text('storage_key').notNull().unique(), sha256: varchar('sha256', { length: 64 }).notNull(), size: integer('size').notNull(), mime: text('mime').notNull(),
   createdBy: uuid('created_by').notNull().references(() => users.id), createdAt: criado(),
 });

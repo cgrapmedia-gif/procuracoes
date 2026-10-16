@@ -193,6 +193,32 @@ test.describe.serial('Ciclo completo no browser', () => {
     await foto(page, '13-utilizadores');
   });
 
+  test('prova de vida: criar, pré-visualizar, emitir e descarregar com o nome do requerente', async ({ page }) => {
+    await entrar(page, 'admin');
+    await page.goto('/provas-de-vida/nova');
+    await page.getByRole('combobox', { name: 'Pesquisar requerente' }).fill('amelia');
+    await page.getByRole('option', { name: /Amélia Demo Cardoso/ }).click();
+    await page.getByLabel(/^Assina/).selectOption({ index: 1 });
+    await page.getByLabel(/^N\.º do cartão/).fill('0000031247');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    const previa = page.frameLocator('iframe[title="Pré-visualização da prova de vida"]');
+    await expect(previa.locator('body')).toContainText('compareceu a Senhora AMÉLIA DEMO CARDOSO');
+    await expect(previa.locator('body')).toContainText('para efeito de manutenção do direito à pensão de reforma');
+    // a idade vem da ficha: falta a data de nascimento, acrescenta-se sem sair
+    await expect(page.getByText('Indique a data de nascimento do requerente')).toBeVisible();
+    await page.getByRole('button', { name: /Dados de Amélia/ }).click();
+    await page.getByLabel(/^Data de nascimento/).fill('1951-03-10');
+    await page.getByRole('button', { name: 'Guardar pessoa' }).click();
+    await expect(page.getByText('Tudo pronto para emitir.')).toBeVisible();
+    await expect(previa.locator('body')).toContainText('de 75 anos de idade');
+    await page.getByRole('button', { name: 'Emitir' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Emitir' }).click();
+    await expect(page.getByRole('heading', { name: /Prova de vida n\.º \d+\/10\.05\/CGRAP\/\d{4}/ })).toBeVisible({ timeout: 20_000 });
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF' }).click()]);
+    expect(dl.suggestedFilename()).toMatch(/^Prova_de_Vida_\d+-10\.05-CGRAP-\d{4}_Amelia_Demo_Cardoso\.pdf$/);
+    await foto(page, '14-prova-de-vida');
+  });
+
   test('auditoria íntegra', async ({ page }) => {
     await entrar(page, 'admin');
     await page.goto('/admin/auditoria');

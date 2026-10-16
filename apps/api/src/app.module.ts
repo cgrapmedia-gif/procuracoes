@@ -20,6 +20,8 @@ import { PersonsService } from './persons/persons.service';
 import { PersonsImportService } from './persons/persons-import.service';
 import { EmissaoService } from './poa/emissao.service';
 import { PurgaService } from './poa/purga.service';
+import { DeclaracoesService } from './declaracoes/declaracoes.service';
+import { DeclaracoesController } from './declaracoes/declaracoes.controller';
 import { PoaController } from './poa/poa.controller';
 import { PoaService } from './poa/poa.service';
 import { ImportService } from './powers/import.service';
@@ -32,9 +34,9 @@ import { PowersService } from './powers/powers.service';
     JwtModule.register({ global: true, secret: config().JWT_SECRET, signOptions: { algorithm: 'HS256', issuer: 'procuracoes' }, verifyOptions: { algorithms: ['HS256'], issuer: 'procuracoes' } }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
   ],
-  controllers: [HealthController, AuthController, PowersController, PersonsController, CatalogController, PoaController, DashboardController, ...AdminModuleControllers],
+  controllers: [HealthController, DeclaracoesController, AuthController, PowersController, PersonsController, CatalogController, PoaController, DashboardController, ...AdminModuleControllers],
   providers: [
-    AuthService, AuditService, CryptoService, PowersService, ImportService, PersonsService, PersonsImportService, PoaService, EmissaoService, PurgaService, PdfService, StorageService,
+    AuthService, AuditService, CryptoService, PowersService, ImportService, PersonsService, PersonsImportService, PoaService, EmissaoService, PurgaService, DeclaracoesService, PdfService, StorageService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ErrosFilter },

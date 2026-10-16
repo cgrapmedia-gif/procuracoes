@@ -153,7 +153,7 @@ export class EmissaoService {
 
   async descarregar(docId: string, u: Utilizador) {
     const [d] = await this.db.select({ poaId: s.documents.poaId, kind: s.documents.kind }).from(s.documents).where(eq(s.documents.id, docId));
-    if (!d) throw new NotFoundException();
+    if (!d || !d.poaId) throw new NotFoundException();
     return this.obterDocumento(d.poaId, d.kind as 'PDF', u);
   }
 
